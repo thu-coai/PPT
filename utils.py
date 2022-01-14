@@ -78,7 +78,6 @@ def get_model(args, vocab_size, prompt_config=None):
                         parallel_output=True,
                         checkpoint_activations=args.checkpoint_activations,
                         checkpoint_num_layers=args.checkpoint_num_layers,
-                        data_hack="chid" if args.data_name == "chid3" else None,
                         prompt_config=prompt_config)
 
     if mpu.get_data_parallel_rank() == 0:

@@ -27,8 +27,7 @@ class EncDecModel(nn.Module):
         parallel_output=True,
         checkpoint_activations=False,
         checkpoint_num_layers=1,
-        prompt_config=None,
-        data_hack=None):
+        prompt_config=None):
         
         super(EncDecModel, self).__init__()
         if config.vocab_size is None:
@@ -46,9 +45,9 @@ class EncDecModel(nn.Module):
 
         self.lm_head = mpu.VocabParallelEmbedding(config.vocab_size, config.d_model, init_method=init_method)
 
-        self.encoder = mpu.ParallelTransformer(self.enc_config, word_embeds=self.word_embeds, is_decoder=False, data_hack=data_hack, prompt_config=prompt_config["enc"] if prompt_config is not None else None,
+        self.encoder = mpu.ParallelTransformer(self.enc_config, word_embeds=self.word_embeds, is_decoder=False, prompt_config=prompt_config["enc"] if prompt_config is not None else None,
                                                checkpoint_activations=checkpoint_activations, checkpoint_num_layers=checkpoint_num_layers)
-        self.decoder = mpu.ParallelTransformer(self.dec_config, word_embeds=self.word_embeds, is_decoder=True, data_hack=data_hack, prompt_config=prompt_config["dec"] if prompt_config is not None else None,
+        self.decoder = mpu.ParallelTransformer(self.dec_config, word_embeds=self.word_embeds, is_decoder=True, prompt_config=prompt_config["dec"] if prompt_config is not None else None,
                                                checkpoint_activations=checkpoint_activations, checkpoint_num_layers=checkpoint_num_layers)
 
     def init_prompt_embeds(self):

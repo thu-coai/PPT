@@ -40,7 +40,7 @@ PROMPT_PATH="${WORKING_DIR}/prompt_embeds/pretrain-${CKPT}-${CKPT_ITER}.pt"
 
 SAVE_PATH="${WORKING_DIR}/results/sst2/few-shot-32/lr${LR}_G${GRAD_ACC}/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
-DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_sst2_prompt.json"
+DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/ppt.json"

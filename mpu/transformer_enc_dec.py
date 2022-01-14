@@ -598,67 +598,8 @@ class ParallelBlock(nn.Module):
         return outputs
 
 
-class LstmPromptEncoder(nn.Module):
-    def __init__(self, hidden_size):
-        super(LstmPromptEncoder, self).__init__()
-        self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=1, batch_first=True, bidirectional=True)
-        self.fc1 = nn.Linear(2 * hidden_size, hidden_size)
-        self.act_fn = nn.ReLU()
-        self.fc2 = nn.Linear(hidden_size, hidden_size)
-    
-    def forward(self, input):
-        x, _ = self.lstm(input)
-        x = self.fc1(x)
-        x = self.act_fn(x)
-        x = self.fc2(x)
-        return x
-
-
-class PromptAutoEncoder(nn.Module):
-    def __init__(self, config):
-        super(PromptAutoEncoder, self).__init__()
-        self.encoder = nn.Sequential(
-            nn.Linear(1024, 256),
-            nn.ReLU(),
-            nn.Linear(256, 64),
-            nn.ReLU(),
-            nn.Linear(64, 16),
-            nn.ReLU(),
-            nn.Linear(16, 4))
-        self.decoder = nn.Sequential(
-            nn.Linear(4, 16),
-            nn.ReLU(),
-            nn.Linear(16, 64),
-            nn.ReLU(),
-            nn.Linear(64, 256),
-            nn.ReLU(),
-            nn.Linear(256, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 4096),
-        )
-
-    def forward(self, prompts):
-        x = self.encoder(prompts)
-        x = self.decoder
-        return x
-
-
-class PromptMLPEncoder(nn.Module):
-    def __init__(self, config):
-        super(PromptMLPEncoder, self).__init__()
-        self.fc1 = nn.Linear(1024, 2560)
-        self.act = nn.ReLU()
-        self.fc2 = nn.Linear(2560, 4096)
-    
-    def forward(self, prompts):
-        x = self.fc1(prompts)
-        x = self.act(x)
-        x = self.fc2(x)
-        return x
-
-
 class ParallelTransformer(nn.Module):
-    def __init__(self, config: EncDecConfig, word_embeds: VocabParallelEmbedding, data_hack=None, prompt_config=None, is_decoder=False, checkpoint_activations=False, checkpoint_num_layers=1):
+    def __init__(self, config: EncDecConfig, word_embeds: VocabParallelEmbedding, prompt_config=None, is_decoder=False, checkpoint_activations=False, checkpoint_num_layers=1):
         super(ParallelTransformer, self).__init__()
         
         self.word_embeds = word_embeds
@@ -667,20 +608,12 @@ class ParallelTransformer(nn.Module):
         if self.prompt_config is not None and self.prompt_config["prompt_len"] > 0:
             prompt_dim = prompt_config.get("prompt_dim", config.d_model)
             self.prompt_embeds = nn.Embedding(prompt_config["prompt_len"], prompt_dim)
-            if self.prompt_config.get("prompt_encoder", None) is not None:
-                if self.prompt_config["prompt_encoder"] == "lstm":
-                    self.prompt_encoder = LstmPromptEncoder(config.d_model)
-                elif self.prompt_config["prompt_encoder"] == "mlp":
-                    self.prompt_encoder = PromptMLPEncoder(prompt_config)
-                elif self.prompt_config["prompt_encoder"] == "auto_encoder":
-                    self.prompt_encoder = PromptAutoEncoder(prompt_config)
 
         self.dropout = nn.Dropout(config.dropout_rate)
         self.final_layernorm = LayerNorm(config.d_model, eps=config.layer_norm_epsilon)
         self.checkpoint_activations = checkpoint_activations
         self.checkpoint_num_layers = checkpoint_num_layers
         self.is_decoder = is_decoder
-        self.data_hack = data_hack
 
         output_layer_init_method = None
         if config.use_scaled_init_for_output_weights:
@@ -704,7 +637,6 @@ class ParallelTransformer(nn.Module):
     def init_prompt_embeds(self):
         if self.prompt_config is not None and self.prompt_config["prompt_len"] > 0:
             prompt_weights = self.word_embeds(self.prompt_config["init_ids"]).detach()
-            # self.prompt_embeds = nn.Embedding(self.prompt_config["prompt_len"], self.config.d_model).from_pretrained(prompt_weights, freeze=False)
             self.prompt_embeds.weight.data = prompt_weights
 
     def load_prompt_embeds(self, prompt_embeds):
@@ -720,7 +652,7 @@ class ParallelTransformer(nn.Module):
             return None
 
     def get_input_embeds(self, input_ids):
-        if self.prompt_config is None and self.data_hack is None:
+        if self.prompt_config is None:
             return self.word_embeds(input_ids)
 
         p_embeds = None
@@ -728,11 +660,6 @@ class ParallelTransformer(nn.Module):
             prompt_mask = (input_ids < 0).long()
             prompt_ids = (-(input_ids * prompt_mask)) - prompt_mask
             p_embeds = self.prompt_embeds(prompt_ids) * prompt_mask.half().unsqueeze(-1)
-            if self.prompt_config.get("prompt_encoder", None) is not None:
-                if self.prompt_config["prompt_encoder"] == "auto_encoder":
-                    p_embeds_only = p_embeds[:self.prompt_config["prompt_len"]]
-                    p_embeds_only = self.prompt_encoder(p_embeds_only)
-                    p_embeds[:self.prompt_config["prompt_len"]] = p_embeds_only
 
         word_mask = (0 <= input_ids).long()
         word_ids = word_mask * input_ids
@@ -743,30 +670,6 @@ class ParallelTransformer(nn.Module):
 
         return w_embeds # bs * seq_len * hidden
 
-    def get_inserted_hidden(self, input_ids, hidden_states):
-        prompt_mask = (input_ids < 0).long()
-        prompt_ids = (-(input_ids * prompt_mask)) - prompt_mask
-        p_embeds = self.prompt_embeds(prompt_ids) * prompt_mask.float().unsqueeze(-1)
-        all_inserted_hidden = []
-        # if torch.distributed.get_rank() == 0:
-        #     print(input_ids.size())
-        #     print(hidden_states.size())
-        #     print(p_embeds.size())
-        for b_input_ids, b_hidden_states, b_p_embeds in zip(input_ids, hidden_states, p_embeds):
-            inserted_hidden = []
-            i_h = 0
-            for i_p, id in enumerate(b_input_ids):
-                if id < 0:
-                    inserted_hidden.append(b_p_embeds[i_p])
-                else:
-                    inserted_hidden.append(b_hidden_states[i_h])
-                    i_h += 1
-            inserted_hidden = torch.stack(inserted_hidden, dim=0)
-            all_inserted_hidden.append(inserted_hidden)
-        all_inserted_hidden = torch.stack(all_inserted_hidden, dim=0)
-
-        return all_inserted_hidden
-
     def forward(
         self,
         input_ids=None,
@@ -776,9 +679,6 @@ class ParallelTransformer(nn.Module):
         past_key_values=None,):
         
         inputs_embeds = self.get_input_embeds(input_ids)
-        # remove abstract position ids
-        # pos_embeds = self.position_embeds(position_ids)
-        # inputs_embeds = inputs_embeds + pos_embeds
 
         hidden_states = self.dropout(inputs_embeds)
         position_bias = None
@@ -789,17 +689,12 @@ class ParallelTransformer(nn.Module):
         if past_key_values is None:
             past_key_values = [None] * len(self.blocks)
 
-        # NOTE: check implementation: checkpoint_activations
-
         all_self_attention_probs = []
         all_cross_attention_probs = []
 
         def custom(start, end):
             def custom_forward(*inputs):
-                if self.prompt_config is not None and self.prompt_config["prompt_len"] > 0:
-                    insert_layer = self.prompt_config.get("insert_layer", -1)
-                else:
-                    insert_layer = -1
+                insert_layer = -1
                 layer_modules_ = self.blocks[start:end]
                 past_key_values_ = past_key_values[start:end]
                 self_attn_present_key_values_ = []
@@ -819,21 +714,8 @@ class ParallelTransformer(nn.Module):
 
                 _l = start
                 for layer_, past_key_value_ in zip(layer_modules_, past_key_values_):
-                    # if torch.distributed.get_rank() == 0:
-                    #     print("OKOKOKOKOKOKOK", _l, hidden_states_.size(), self.is_decoder)
-                    if _l < insert_layer and not self.is_decoder:
-                        p_attention_mask = attention_mask[:, :, self.prompt_config["prompt_len"]:, self.prompt_config["prompt_len"]:]
-                    else:
-                        p_attention_mask = attention_mask
-                    if _l == insert_layer and not self.is_decoder:
-                        hidden_states_ = self.get_inserted_hidden(input_ids, hidden_states_)
-                        position_bias_ = self.blocks[0].self_attn.self_attn.compute_bias(hidden_states_.size(1), hidden_states_.size(1)) # recompte position_bias
-                    # if torch.distributed.get_rank() == 0:
-                    #     print(hidden_states_.size())
-                    #     print(hidden_states_)
-                    # exit(0)
                     layer_outputs_ = layer_(hidden_states_,
-                                            p_attention_mask,
+                                            attention_mask,
                                             position_bias_,
                                             enc_hidden_states_,
                                             cross_attention_mask,
