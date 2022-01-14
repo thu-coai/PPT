@@ -18,17 +18,6 @@
 # Flag to use Pytorch ddp which uses overlapping communication and computation.
 USE_TORCH_DDP = False
 
-from QADatasets import QADataset
-from YahooDatasets import YahooDataset, YahooDatasetMC
-from DBPediaDatasets import DBPediaDataset, DBPediaDatasetMC
-from SST5Datasets import SST5Dataset, SST5DatasetFromLM, SST5DatasetFromMC, SST5DatasetFromMCMan, SST5DatasetGenRandom, SST5DatasetGenVocab, SST5DatasetMan
-from SST2MCDatasets import SST2MCDataset
-from SST2Datasets import SST2Dataset, SST2DatasetFromLM, SST2DatasetFromMC, SST2DatasetFromMCMan, SST2DatasetGenRandom, SST2DatasetGenRaw, SST2DatasetGenVocab, SST2DatasetMan, SST2DatasetMan2, SST2DatasetMan3, SST2DatasetManVocab2, SST2DatasetManVocab3, SST2DatasetManVocab4
-from RACEDatasets import RACEDataset, RACEDataset2, RACEDatasetFromLM, RACEDatasetFromPretrain, RACEDatasetFromPretrainLabel2, RACEDatasetFromPretrainLabel3, RACEDatasetFromPretrainLabel4, RACEDatasetMan, RACEHDatasetGenRandom, RACEHDatasetGenVocab, RACEMDatasetGenRandom, RACEMDatasetGenVocab
-from WSCDatasets import WSCDataset, WSCDatasetMan, WSCDatasetMan2
-from CBDatasets import CBDataset, CBDatasetFromLM, CBDatasetFromPretrainUni, CBDatasetGenRandom, CBDatasetGenVocab, CBDatasetLable2, CBDatasetLable3, CBDatasetLable4, CBDatasetMan
-from COPADatasets import COPADataset
-from RTEDatasets import RTEDataset, RTEDatasetFromLM, RTEDatasetFromPretrainUni, RTEDatasetGenRandom, RTEDatasetGenVocab, RTEDatasetMan
 import os
 import re
 import random
@@ -47,9 +36,7 @@ from utils import print_rank_0, save_rank_0
 from utils import setup_model_and_optimizer, set_random_seed, initialize_distributed
 
 from samplers import DistributedBatchSampler, RandomSampler
-
-from CPM2Datasets import CPM2Dataset
-from BoolQDatasets import BoolQDataset, BoolQDatasetFromLM, BoolQDatasetFromPretrainUni, BoolQDatasetGenRandom, BoolQDatasetGenRaw, BoolQDatasetGenVocab, BoolQDatasetMan, BoolQDatasetMan2, BoolQDatasetMan3, BoolQDatasetManVocab2, BoolQDatasetManVocab3, BoolQDatasetManVocab4
+from data_utils import *
 
 import torch.nn.functional as F
 
@@ -952,24 +939,6 @@ def main():
             "eval_func": evaluate,
             "eval_metric": acc_f1_metric,
             "cache_path": None,
-        },
-        "wsc": {
-            "dataset": WSCDataset,
-            "eval_func": evaluate_gen,
-            "eval_metric": wsc_metric,
-            "cache_path": None
-        },
-        "wsc_man": {
-            "dataset": WSCDatasetMan,
-            "eval_func": evaluate_gen,
-            "eval_metric": wsc_metric,
-            "cache_path": None
-        },
-        "wsc_man_2": {
-            "dataset": WSCDatasetMan2,
-            "eval_func": evaluate_gen,
-            "eval_metric": wsc_metric,
-            "cache_path": None
         },
         "sst2": {
             "dataset": SST2Dataset,

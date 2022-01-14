@@ -1,0 +1,12 @@
+from QADatasets import QADataset
+from YahooDatasets import YahooDataset, YahooDatasetMC
+from DBPediaDatasets import DBPediaDataset, DBPediaDatasetMC
+from SST5Datasets import SST5Dataset, SST5DatasetFromLM, SST5DatasetFromMC, SST5DatasetFromMCMan, SST5DatasetGenRandom, SST5DatasetGenVocab, SST5DatasetMan
+from SST2MCDatasets import SST2MCDataset
+from SST2Datasets import SST2Dataset, SST2DatasetFromLM, SST2DatasetFromMC, SST2DatasetFromMCMan, SST2DatasetGenRandom, SST2DatasetGenRaw, SST2DatasetGenVocab, SST2DatasetMan, SST2DatasetMan2, SST2DatasetMan3, SST2DatasetManVocab2, SST2DatasetManVocab3, SST2DatasetManVocab4
+from RACEDatasets import RACEDataset, RACEDataset2, RACEDatasetFromLM, RACEDatasetFromPretrain, RACEDatasetFromPretrainLabel2, RACEDatasetFromPretrainLabel3, RACEDatasetFromPretrainLabel4, RACEDatasetMan, RACEHDatasetGenRandom, RACEHDatasetGenVocab, RACEMDatasetGenRandom, RACEMDatasetGenVocab
+from CBDatasets import CBDataset, CBDatasetFromLM, CBDatasetFromPretrainUni, CBDatasetGenRandom, CBDatasetGenVocab, CBDatasetLable2, CBDatasetLable3, CBDatasetLable4, CBDatasetMan
+from COPADatasets import COPADataset
+from RTEDatasets import RTEDataset, RTEDatasetFromLM, RTEDatasetFromPretrainUni, RTEDatasetGenRandom, RTEDatasetGenVocab, RTEDatasetMan
+from CPM2Datasets import CPM2Dataset
+from BoolQDatasets import BoolQDataset, BoolQDatasetFromLM, BoolQDatasetFromPretrainUni, BoolQDatasetGenRandom, BoolQDatasetGenRaw, BoolQDatasetGenVocab, BoolQDatasetMan, BoolQDatasetMan2, BoolQDatasetMan3, BoolQDatasetManVocab2, BoolQDatasetManVocab3, BoolQDatasetManVocab4

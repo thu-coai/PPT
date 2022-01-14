@@ -1,1 +1,0 @@
-bash /mnt/sfs_turbo/gyx/PPT/scripts_new/prompt/cb/finetune_t5_cb_few_shot_from_pretrain_add_test.sh 0.05 1 10

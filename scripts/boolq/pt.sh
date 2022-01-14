@@ -26,7 +26,7 @@ OPTIONS_NCCL="NCCL_DEBUG=info"
 MP_SIZE=4
 
 DATA_EXT=".jsonl"
-DATA_PATH="/mnt/sfs_turbo/gyx/data_en/wsc/"
+DATA_PATH="/mnt/sfs_turbo/gyx/data_en/boolq/"
 
 LR=${1-0.005}
 GRAD_ACC=${2-1}
@@ -35,17 +35,17 @@ SEED=${3-1234}
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
 CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
 
-SAVE_PATH="${WORKING_DIR}/results/wsc/few-shot/lr${LR}_G${GRAD_ACC}_prompt_num32_bs8/seed${SEED}/"
+SAVE_PATH="${WORKING_DIR}/results/boolq/few-shot/lr${LR}_G${GRAD_ACC}_prompt_num32_bs8_fix/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
 TOKENIZER_PATH="${WORKING_DIR}/sp_t5"
 
-PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/wsc/wsc.json"
+PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/boolq/boolq.json"
 
 BATCH_SIZE=8
 EVAL_BATCH_SIZE=16
 TRAIN_ITER=-1
-EPOCHS=200
+EPOCHS=50
 
 
 OPTS=""
@@ -60,7 +60,7 @@ OPTS+=" --log-file ${LOG_FILE}"
 OPTS+=" --load ${CKPT_PATH}"
 OPTS+=" --data-path ${DATA_PATH}"
 OPTS+=" --data-ext ${DATA_EXT}"
-OPTS+=" --data-name wsc"
+OPTS+=" --data-name boolq"
 OPTS+=" --distributed-backend nccl"
 OPTS+=" --lr ${LR}"
 OPTS+=" --no-load-optim"
@@ -70,9 +70,9 @@ OPTS+=" --clip-grad 1.0"
 OPTS+=" --warmup 0.0"
 OPTS+=" --tokenizer-path ${TOKENIZER_PATH}"
 OPTS+=" --save-interval 100000"
-OPTS+=" --eval-interval 50"
+OPTS+=" --eval-interval 6"
 OPTS+=" --eval-iters 10"
-OPTS+=" --log-interval 10"
+OPTS+=" --log-interval 2"
 OPTS+=" --checkpoint-activations"
 OPTS+=" --deepspeed-activation-checkpointing"
 OPTS+=" --fp16"
@@ -88,7 +88,7 @@ OPTS+=" --prompt-config ${PROMPT_CONFIG}"
 # OPTS+=" --do_infer"
 OPTS+=" --epochs ${EPOCHS}"
 
-CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/finetune_cpm2.py ${OPTS}"
+CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/train.py ${OPTS}"
 
 echo ${CMD}
 mkdir -p ${SAVE_PATH}

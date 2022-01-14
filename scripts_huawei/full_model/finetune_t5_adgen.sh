@@ -68,8 +68,8 @@ OPTS+=" --epochs ${EPOCHS}"
 OPTS+=" --top-p ${TOP_P}"
 OPTS+=" --top-k ${TOP_K}"
 
-# CMD="python -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/finetune_cpm2.py ${OPTS}"
-CMD="deepspeed --num_nodes ${NUM_WORKERS} --num_gpus ${NUM_GPUS_PER_WORKER} --hostfile ${HOST_FILE} ${WORKING_DIR}/finetune_cpm2.py ${OPTS}"
+# CMD="python -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/train.py ${OPTS}"
+CMD="deepspeed --num_nodes ${NUM_WORKERS} --num_gpus ${NUM_GPUS_PER_WORKER} --hostfile ${HOST_FILE} ${WORKING_DIR}/train.py ${OPTS}"
 
 echo ${CMD}
 mkdir -p ${SAVE_PATH}

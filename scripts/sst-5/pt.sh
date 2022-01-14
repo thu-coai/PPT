@@ -26,27 +26,23 @@ OPTIONS_NCCL="NCCL_DEBUG=info"
 MP_SIZE=4
 
 DATA_EXT=".jsonl"
-DATA_PATH="/mnt/sfs_turbo/gyx/data_en/cb/"
+DATA_PATH="/mnt/sfs_turbo/gyx/data_en/sst5"
 
-LR=${1-0.005}
+LR=${1-0.01}
 GRAD_ACC=${2-1}
 SEED=${3-1234}
-CKPT=${4-nsp_10g_3c_en_lr0.1}
-CKPT_ITER=${5-8000}
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
 CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
-PROMPT_PATH="${WORKING_DIR}/prompt_embeds/pretrain-${CKPT}-${CKPT_ITER}.pt"
 
-SAVE_PATH="${WORKING_DIR}/results/cb/few-shot-new/lr${LR}_G${GRAD_ACC}_prompt_from_pretrain_${CKPT}_${CKPT_ITER}_num32_bs8/seed${SEED}/"
+SAVE_PATH="${WORKING_DIR}/results/sst5/few-shot/lr${LR}_G${GRAD_ACC}_prompt_num32/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
-DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
+DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_sst2_prompt.json"
 TOKENIZER_PATH="${WORKING_DIR}/sp_t5"
 
-PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/cb/cb_from_pretrain.json"
+PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/sst2/sst2.json"
 
 BATCH_SIZE=8
-EVAL_BATCH_SIZE=2
 TRAIN_ITER=-1
 EPOCHS=50
 
@@ -55,16 +51,14 @@ OPTS=""
 OPTS+=" --model-config ${CONFIG_PATH}"
 OPTS+=" --model-parallel-size ${MP_SIZE}"
 OPTS+=" --batch-size ${BATCH_SIZE}"
-OPTS+=" --eval-batch-size ${EVAL_BATCH_SIZE}"
 OPTS+=" --gradient-accumulation-steps ${GRAD_ACC}"
 OPTS+=" --train-iters ${TRAIN_ITER}"
 OPTS+=" --save ${SAVE_PATH}"
 OPTS+=" --log-file ${LOG_FILE}"
 OPTS+=" --load ${CKPT_PATH}"
-OPTS+=" --load_prompt ${PROMPT_PATH}"
 OPTS+=" --data-path ${DATA_PATH}"
 OPTS+=" --data-ext ${DATA_EXT}"
-OPTS+=" --data-name cb"
+OPTS+=" --data-name sst5"
 OPTS+=" --distributed-backend nccl"
 OPTS+=" --lr ${LR}"
 OPTS+=" --no-load-optim"
@@ -85,14 +79,13 @@ OPTS+=" --deepspeed_config ${DS_CONFIG}"
 OPTS+=" --do-train"
 OPTS+=" --do-valid"
 OPTS+=" --seed ${SEED}"
-# OPTS+=" --train-num ${NUM}"
 # OPTS+=" --do-eval"
 OPTS+=" --prompt-tune"
 OPTS+=" --prompt-config ${PROMPT_CONFIG}"
 # OPTS+=" --do_infer"
 OPTS+=" --epochs ${EPOCHS}"
 
-CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/finetune_cpm2.py ${OPTS}"
+CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/train.py ${OPTS}"
 
 echo ${CMD}
 mkdir -p ${SAVE_PATH}

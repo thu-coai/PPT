@@ -83,7 +83,7 @@ OPTS+=" --seed ${SEED}"
 # OPTS+=" --do_infer"
 OPTS+=" --epochs ${EPOCHS}"
 
-CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/finetune_cpm2.py ${OPTS}"
+CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/train.py ${OPTS}"
 
 echo ${CMD}
 mkdir -p ${SAVE_PATH}
