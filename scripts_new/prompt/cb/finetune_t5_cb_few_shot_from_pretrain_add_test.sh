@@ -36,9 +36,9 @@ CKPT_ITER=${5-8000}
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
 CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
-PROMPT_PATH="${WORKING_DIR}/prompt_embeds/pretrain-${CKPT}-${CKPT_ITER}"
+PROMPT_PATH="${WORKING_DIR}/prompt_embeds/pretrain-${CKPT}-${CKPT_ITER}.pt"
 
-SAVE_PATH="${WORKING_DIR}/results/cb/few-shot-new/test_new_load_2_lr${LR}_G${GRAD_ACC}_prompt_from_pretrain_${CKPT}_${CKPT_ITER}_num32_bs8/seed${SEED}/"
+SAVE_PATH="${WORKING_DIR}/results/cb/few-shot-new/lr${LR}_G${GRAD_ACC}_prompt_from_pretrain_${CKPT}_${CKPT_ITER}_num32_bs8/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
 TOKENIZER_PATH="${WORKING_DIR}/sp_t5"
