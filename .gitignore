@@ -1,0 +1,8 @@
+.vscode/
+upload.sh
+results/
+results-local/
+checkpoints/
+__pycache__
+*.so
+prompt_embeds

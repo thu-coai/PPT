@@ -1,0 +1,10 @@
+nltk>=3.4
+numpy>=1.15.4
+pandas>=0.24.0
+sentencepiece>=0.1.8
+boto3==1.11.11
+regex==2020.1.8
+torch==1.6.0
+tqdm==4.46.0
+jieba==0.42.1
+pybind11==2.5.0

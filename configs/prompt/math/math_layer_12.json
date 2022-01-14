@@ -1,0 +1,18 @@
+{
+    "init_scratch": true,
+    "fix_model": true,
+    "init_from_vocab": false,
+    "enc": {
+        "prompt_len": 100,
+        "insert_input": false,
+        "insert_layer": 12,
+        "init_tokens": "",
+        "default_init_token": "<mask>",
+        "ratio_list": [1.0, 0.0, 0.0]
+    },
+    "dec": {
+        "prompt_len": 0,
+        "init_tokens": "",
+        "default_init_token": "<mask>"
+    }
+}

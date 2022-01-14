@@ -1,0 +1,19 @@
+{
+    "init_scratch": false,
+    "load_prompt": "",
+    "fix_model": true,
+    "init_from_vocab": false,
+    "enc": {
+        "prompt_len": 100,
+        "init_tokens": "",
+        "default_init_token": "<mask>",
+        "ratio_list": [10, 0, 0],
+        "prompt_encoder": "auto_encoder",
+        "prompt_dim": 1024
+    },
+    "dec": {
+        "prompt_len": 0,
+        "init_tokens": "",
+        "default_init_token": "<mask>"
+    }
+}
