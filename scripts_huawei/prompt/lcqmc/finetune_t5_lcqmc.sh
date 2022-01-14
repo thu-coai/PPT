@@ -38,7 +38,7 @@ CKPT_PATH="/mnt/sfs_turbo/gyx/enc-dec-pretrain-dense/checkpoints/checkpoint-4-19
 SAVE_PATH="${WORKING_DIR}/results/lcqmc/full-data/lr${LR}_G${GRAD_ACC}_prompt_raw/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
-TOKENIZER_PATH="${WORKING_DIR}/bpe_cn"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_cn"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/lcqmc/lcqmc_10_0_0.json"
 

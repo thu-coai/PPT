@@ -19,7 +19,7 @@ LR=${1-0.01}
 SAVE_PATH="${WORKING_DIR}/results/lcqmc/t5_finetune_lr${LR}_prompt_5_5_0_mask_p2t_2/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
-TOKENIZER_PATH="${WORKING_DIR}/bpe_cn"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_cn"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/mask_p2t_5_5_0.json"
 

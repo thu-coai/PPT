@@ -41,7 +41,7 @@ CKPT_PATH="/mnt/sfs_turbo/gyx/CPM-2-Pretrain/results/${CKPT}/${CKPT_ITER}"
 SAVE_PATH="${WORKING_DIR}/results/poem_mc/few-shot/lr${LR}_G${GRAD_ACC}_prompt_from_pretrain_${CKPT}_${CKPT_ITER}_num${NUM}/seed${SEED}"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_poem_mc_prompt.json"
-TOKENIZER_PATH="${WORKING_DIR}/bpe_cn"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_cn"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/poem_mc/poem_mc_10_0_0_pretrain.json"
 

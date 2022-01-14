@@ -40,7 +40,7 @@ CKPT_PATH="/mnt/sfs_turbo/gyx/CPM-2-Pretrain-En/results/${CKPT}/${CKPT_ITER}"
 SAVE_PATH="${WORKING_DIR}/results/race_m/few-shot/lr${LR}_G${GRAD_ACC}_prompt_from_pretrain_label3_${CKPT}_${CKPT_ITER}_num32/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_race_prompt.json"
-TOKENIZER_PATH="${WORKING_DIR}/sp_t5"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/race/race_from_pretrain.json"
 

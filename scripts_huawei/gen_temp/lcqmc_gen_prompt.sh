@@ -22,7 +22,7 @@ CKPT_PATH="/dataset/f1d6ea5b/gyx/CPM-2-dense/"
 SAVE_PATH="${WORKING_DIR}/results/lcqmc/gen_temp/prompt/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
-TOKENIZER_PATH="${WORKING_DIR}/bpe_cn"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_cn"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/lcqmc/lcqmc_10_0_0_init_vocab.json"
 

@@ -38,7 +38,7 @@ CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
 SAVE_PATH="${WORKING_DIR}/results/boolq/few-shot/lr${LR}_G${GRAD_ACC}_prompt_man_3_num32_bs8_fix/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
-TOKENIZER_PATH="${WORKING_DIR}/sp_t5"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/boolq/boolq.json"
 

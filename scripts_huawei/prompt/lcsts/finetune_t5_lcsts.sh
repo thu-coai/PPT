@@ -21,7 +21,7 @@ CKPT_PATH="/dataset/f1d6ea5b/gyx/CPM-2-dense/"
 SAVE_PATH="${WORKING_DIR}/results/lcsts/t5_finetune_lcsts_lr${LR}const_G${GRAD_ACC}_prompt_seed${SEED}_test/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_lcsts_prompt.json"
-TOKENIZER_PATH="${WORKING_DIR}/bpe_cn"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_cn"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/lcsts/lcsts_10_0_0.json"
 

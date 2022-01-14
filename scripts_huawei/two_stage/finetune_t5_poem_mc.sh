@@ -20,7 +20,7 @@ CKPT_PATH="${WORKING_DIR}/results/poem_mc/t5_finetune_lr0.05const_G2_prompt_seed
 SAVE_PATH="${WORKING_DIR}/results/poem_mc/t5_finetune_lr${LR}const_baselr0.05const_continue_${INIT_CKPT}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_poem_mc_prompt.json"
-TOKENIZER_PATH="${WORKING_DIR}/bpe_cn"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_cn"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/poem_mc/poem_mc_model_tune.json"
 

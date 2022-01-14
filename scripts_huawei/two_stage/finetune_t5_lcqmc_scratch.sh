@@ -18,7 +18,7 @@ CKPT_PATH="/dataset/f1d6ea5b/gyx/CPM-2-dense/"
 SAVE_PATH="${WORKING_DIR}/results/t5_finetune_lcqmc_lr${LR}const_baselr0.01const_continue_scratch_see_grad_prompt/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
-TOKENIZER_PATH="${WORKING_DIR}/bpe_cn"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_cn"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/lcqmc/lcqmc_model_tune_scratch.json"
 

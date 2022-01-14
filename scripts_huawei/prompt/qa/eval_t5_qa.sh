@@ -39,7 +39,7 @@ PROMPT_PATH="/mnt/sfs_turbo/gyx/PPT/results/qa/race_string/t5_xxl_lr0.001_G8_pro
 SAVE_PATH="${WORKING_DIR}/results/qa/race_string/t5_xxl_lr${LR}_G${GRAD_ACC}_prompt/seed${SEED}/eval-3400/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_race_prompt.json"
-TOKENIZER_PATH="${WORKING_DIR}/sp_t5"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/race/race.json"
 

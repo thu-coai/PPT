@@ -21,7 +21,7 @@ CKPT_PATH="/mnt/sfs_turbo/back-folder/enc-dec-pretrain-dense/results/enc_dec_mt5
 SAVE_PATH="${WORKING_DIR}/results/wmtencn/lr${LR}const_G${GRAD_ACC}/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
-TOKENIZER_PATH="${WORKING_DIR}/bpe_cn_en"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_cn_en"
 
 BATCH_SIZE=16
 TRAIN_ITER=-1

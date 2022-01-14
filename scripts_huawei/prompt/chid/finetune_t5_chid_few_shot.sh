@@ -39,7 +39,7 @@ CKPT_PATH="/mnt/sfs_turbo/gyx/enc-dec-pretrain-dense/checkpoints/checkpoint-4-19
 SAVE_PATH="${WORKING_DIR}/results/chid/few-shot/lr${LR}_G${GRAD_ACC}_prompt_raw_num${NUM}/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_chid_prompt.json"
-TOKENIZER_PATH="${WORKING_DIR}/bpe_cn"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_cn"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/chid/chid_10_0_0.json"
 

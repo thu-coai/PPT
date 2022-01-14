@@ -40,7 +40,7 @@ SAVE_PATH="${WORKING_DIR}/results/qa/race_string/lr${LR}_G${GRAD_ACC}_prompt_fp1
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed_full/ds_race_prompt.json"
 # DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model_fp32.json"
-TOKENIZER_PATH="${WORKING_DIR}/sp_t5"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/race/race.json"
 

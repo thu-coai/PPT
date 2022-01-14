@@ -38,7 +38,7 @@ CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-small/t5-MP1/"
 SAVE_PATH="${WORKING_DIR}/results/race_m/few-shot/t5_small-fp32/full_model_lr${LR}_G${GRAD_ACC}_num32/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model_fp32.json"
-TOKENIZER_PATH="${WORKING_DIR}/sp_t5"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
 BATCH_SIZE=2
 EVAL_BATCH_SIZE=2

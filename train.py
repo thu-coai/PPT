@@ -40,8 +40,6 @@ from data_utils import *
 
 import torch.nn.functional as F
 
-from generation_metrics import Metric
-
 from torch.utils.data import DataLoader, SequentialSampler
 
 
@@ -391,24 +389,6 @@ def evaluate_gen(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: CP
     return total_loss, res
 
 
-def gen_metric(args, tokenizer: EncDecTokenizer, all_preds, all_labels):
-    print("Doing gen metric")
-    metric = Metric(tokenizer)
-    for l, p in zip(all_labels, all_preds):
-        l = list(tokenizer.decode(l[1:-1]))
-        p = list(tokenizer.decode(p[1:-1]))
-        metric.forword([list(map(str, l))], list(map(str, p)))
-    
-    metric_res, *_ = metric.close()
-
-    with open(os.path.join(args.save, "{}.txt".format(metric_res["rouge-l"])), "w") as f:
-        for p, l in zip(all_preds, all_labels):
-            f.write(str(p) + "\t\t" + str(l) + "\n")
-            f.write(tokenizer.decode(p) + "\t\t" + tokenizer.decode(l) + "\n\n")
-
-    return metric_res
-
-
 def acc_metric(args, tokenizer: EncDecTokenizer, all_preds, all_labels):
     acc = sum([int(p == l) for p, l in zip(all_preds, all_labels)]) / len(all_preds)
     
@@ -434,148 +414,6 @@ def acc_f1_metric(args, tokenizer: EncDecTokenizer, all_preds, all_labels):
             f.write("\n")
 
     return [acc, f1_macro]
-
-
-def wsc_metric(args, tokenizer: EncDecTokenizer, all_preds, all_labels, eval_dataset):
-    all_task_preds = []
-    all_preds = [tokenizer.decode(x[1:-1]) for x in all_preds]
-    all_labels = [tokenizer.decode(x[1:-1]) for x in all_labels]
-    for preds, labels in zip(all_preds, all_labels):
-        preds = preds.lower().strip()
-        preds = [w for w in re.split('[^a-zA-Z]', preds) if w]
-        labels = labels.lower().strip()
-        labels = [w for w in re.split('[^a-zA-Z]', labels) if w]
-
-        # compare outputs
-        if all(x in preds for x in labels) or all(x in labels for x in preds):
-            all_task_preds.append(True)
-        else:
-            all_task_preds.append(False)
-
-    all_truth = eval_dataset.truth
-    acc = sum([int(p == l) for p, l in zip(all_task_preds, all_truth)]) / len(all_preds)
-
-    with open(os.path.join(args.save, "{}.txt".format(acc)), "w") as f:
-        for p, l, tp, t in zip(all_preds, all_labels, all_task_preds, all_truth):
-            f.write(str(p) + "\t\t" + str(l) + "\t\t" + str(tp) + "\t\t" + str(t) + "\n")
-            f.write("\n")
-
-    return acc
-
-
-class Node(object):
-    def __init__(self, hidden, previous_node, decoder_input, attn, cross_attn, log_prob, length, past_key_values):
-        self.hidden = hidden
-        self.previous_node = previous_node
-        self.decoder_input = decoder_input
-        self.attn = attn
-        self.cross_attn = cross_attn
-        self.log_prob = log_prob
-        self.past_key_values = past_key_values
-        self.length = length
-
-from queue import Queue
-
-def evaluate_beam(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: CPM2Dataset, eval_data_loader, model, device, mode="dev"):
-    """Evaluation."""
-
-    # Turn on evaluation mode which disables dropout.
-    model.eval()
-
-    total_loss = 0.0
-    step = 0
-
-    all_preds = []
-    all_labels = []
-    all_idx = []
-
-    beam_size = 4
-
-    with torch.no_grad():
-        for model_batch, no_model_batch in eval_data_loader:
-            forw_out = forward_step(args, model_batch, no_model_batch, model, device, keep_enc_hidden=True, do_infer=(mode=="infer"))
-            loss = forw_out["loss"].item() if "loss" in forw_out else 0
-            total_loss += loss
-
-            enc_hidden_states = forw_out["enc_hidden_states"]
-            output_idxs = []
-            for i in range(enc_hidden_states.shape[0]):
-                root = Node(enc_hidden_states[i:i+1, ...], None, model_batch['dec_input_ids'][i:i+1, :1], model_batch['dec_attention_mask'][i:i+1, :, :1, :1], model_batch['cross_attention_mask'][i:i+1, :, :1, :], 0, 1, None)
-                q = Queue()
-                q.put(root)
-
-                end_nodes = []
-                while not q.empty():
-                    candidates = []
-                    for _ in range(q.qsize()):
-                        node = q.get()
-
-                        if node.decoder_input[0, 0].item() == tokenizer.get_sentinel_id(1) or node.length >= args.out_seq_length:
-                            end_nodes.append(node)
-                            continue
-                            
-                        dec_attention_mask = node.attn
-
-                        dec_outputs = model(
-                                dec_input_ids=node.decoder_input,
-                                dec_attention_mask=dec_attention_mask,
-                                cross_attention_mask=node.cross_attn,
-                                enc_hidden_states=node.hidden,
-                                past_key_values=node.past_key_values,
-                        )
-
-                        lm_logits = dec_outputs["lm_logits"]
-
-                        gathered_lm_logits = [torch.zeros_like(lm_logits).to(device) for _ in range(mpu.get_model_parallel_world_size())]
-                        torch.distributed.all_gather(gathered_lm_logits, lm_logits.data, mpu.get_model_parallel_group())
-                        lm_logits = torch.cat(gathered_lm_logits, dim=-1)
-                        next_token_logits = torch.nn.functional.log_softmax(lm_logits[:, -1, :], dim=-1)[0]
-
-                        log_prob, indices = next_token_logits.topk(beam_size)
-                        for k in range(beam_size):
-                            index = indices[k].unsqueeze(0).unsqueeze(0)
-                            log_p = log_prob[k].item()
-                            child = Node(node.hidden, node, index, torch.cat([dec_attention_mask, dec_attention_mask[..., -1:]], dim=-1), node.cross_attn, node.log_prob + log_p, node.length + 1, dec_outputs['past_key_values'])
-                            candidates.append((child.log_prob / child.length, child))
-                    
-                    candidates = sorted(candidates, key=lambda x:x[0], reverse=True)
-                    length = min(len(candidates), beam_size)
-                    for i in range(length):
-                        q.put(candidates[i][1])
-                max_node = sorted(end_nodes, key=lambda x: x.log_prob / x.length, reverse=True)[0]
-                cur_node = max_node
-                output_idx = [cur_node.decoder_input[0, 0].item()]
-                while cur_node.previous_node is not None:
-                    cur_node = cur_node.previous_node
-                    output_idx.append(cur_node.decoder_input[0, 0].item())
-                output_idx = output_idx[:-1] # sent2 .. sent1 1
-                output_idx.reverse()
-                output_idx += [tokenizer.pad_id] * (args.out_seq_length - len(output_idx))
-                output_idxs.append(output_idx)
-
-            output_idxs = torch.LongTensor(output_idxs).cuda()
-
-            gathered_preds = [torch.zeros_like(output_idxs) for _ in range(mpu.get_data_parallel_world_size())]
-            torch.distributed.all_gather(gathered_preds, output_idxs, mpu.get_data_parallel_group())
-            all_preds.extend(gathered_preds)
-            
-            gathered_idx = [torch.zeros_like(no_model_batch["idx"]) for _ in range(mpu.get_data_parallel_world_size())]
-            torch.distributed.all_gather(gathered_idx, no_model_batch["idx"].contiguous(), mpu.get_data_parallel_group())
-            all_idx.extend(gathered_idx)
-
-            step += 1
-
-    total_loss /= step
-
-    all_labels = torch.cat(all_labels, dim=0).cpu().tolist()
-    all_labels = [e[:e.index(tokenizer.pad_id)] if tokenizer.pad_id in e else e for e in all_labels]
-    all_preds = torch.cat(all_preds, dim=0).cpu().tolist()
-    all_preds = [e[:e.index(tokenizer.pad_id)] if tokenizer.pad_id in e else e for e in all_preds]
-
-    eval_metrc = data_config[args.data_name]["eval_metric"]
-    res = eval_metrc(tokenizer, all_preds, all_labels)
-
-    return total_loss, res
 
 
 def load_data(args, data_config, data_type, tokenizer, prompt_config=None, ratio=1, num=-1, drop_last=True, do_infer=False):
@@ -662,42 +500,12 @@ def main():
     if args.prompt_tune:
         with open(args.prompt_config, "r") as f:
             prompt_config = json.load(f)
-            init_from_vocab = prompt_config.get("init_from_vocab", False)
-            init_from_label = prompt_config.get("init_from_label", False)
             if args.load_prompt is not None:
                 prompt_config["load_prompt"] = args.load_prompt
             for t in ["enc", "dec"]:
                 prompt_config[t]["init_ids"] = tokenizer.encode(prompt_config[t]["init_tokens"])
                 pad_num = prompt_config[t]["prompt_len"] - len(prompt_config[t]["init_ids"])
-                if init_from_vocab:
-                    # extra_id_list = [i for i in range(0, 1000)]
-                    # random.shuffle(extra_id_list)
-                    # extra_id_list = extra_id_list[:pad_num]
-                    # extra_id_list = [1273, 688, 4317, 18765, 16607, 2185, 14129, 11718, 6867, 16647, 21633, 16499, 11319, 14337, 3410, 23854, 21214, 24715, 17983, 8594, 18178, 10709, 9311, 14029, 2253, 10721, 7270, 14539, 19058, 6155, 18038, 20189, 26141, 5911, 5416, 24930, 17821, 5300, 11749, 12420, 2506, 8058, 18713, 14109, 3546, 2473, 14497, 4838, 15189, 20389, 22726, 22736, 1729, 3891, 3708, 14859, 19889, 20216, 14385, 20196, 14892, 9909, 15255, 15579, 25369, 15556, 21911, 389, 17297, 7668, 11825, 12037, 22548, 23342, 17876, 21091, 11246, 21048, 12660, 1239, 17118, 14809, 8821, 12683, 15571, 25274, 24743, 17935, 18640, 21428, 21936, 10781, 19864, 17113, 11648, 9248, 24316, 8105, 14614, 13714]
-                    # extra_id_list = [286, 581, 919, 944, 341, 984, 59, 706, 721, 747, 713, 249, 634, 534, 515, 187, 282, 672, 616, 298, 849, 977, 666, 911, 326, 440, 568, 948, 516, 276, 723, 777, 99, 393, 638, 239, 97, 222, 77, 70, 302, 370, 391, 301, 329, 529, 417, 752, 588, 877, 955, 365, 629, 622, 668, 252, 688, 184, 741, 829, 34, 129, 664, 414, 925, 382, 648, 520, 369, 163, 930, 903, 857, 495, 388, 266, 197, 557, 693, 205, 92, 808, 824, 109, 19, 253, 727, 978, 699, 295, 801, 719, 612, 757, 619, 736, 785, 300, 816, 853] # ocnli
-                    # extra_id_list = [353, 596, 400, 292, 738, 161, 872, 385, 491, 784, 859, 537, 200, 961, 942, 183, 335, 547, 592, 395, 756, 549, 436, 958, 867, 654, 245, 723, 820, 391, 677, 344, 936, 155, 402, 900, 314, 546, 26, 235, 219, 584, 182, 58, 278, 929, 422, 21, 371, 462, 232, 352, 852, 286, 360, 66, 660, 40, 680, 516, 83, 591, 17, 148, 446, 518, 101, 339, 393, 211, 340, 268, 542, 108, 438, 359, 102, 599, 272, 935, 334, 868, 891, 467, 817, 450, 52, 481, 578, 120, 620, 791, 269, 678, 498, 740, 275, 68, 854, 11] # most
-                    if "sst2" in args.data_name:
-                        extra_id_list = [1974, 59, 120, 814, 103, 95, 80, 114, 20, 53, 107, 145, 12, 485, 56, 38, 57, 36, 12373, 97, 99, 112, 396, 18, 73, 23, 165, 125, 113, 6, 41, 49, 5, 66, 46, 28, 385, 2850, 34, 237, 32, 68, 60, 52, 9, 7, 179, 17, 81, 128, 25, 2, 19, 210, 48, 13, 1636, 139, 150, 405, 21, 116, 143, 733, 91, 30, 31, 61, 131, 11, 43, 77, 168, 40, 207, 3, 75, 88, 16, 29, 24, 63, 42, 35, 65, 167, 15, 8, 45, 132, 44, 54, 33, 26, 233, 72, 231, 51, 78, 89] # sst2
-                    elif "boolq" in args.data_name:
-                        extra_id_list = [8, 34, 66, 12, 61, 189, 38, 261, 33, 84, 43, 77, 1150, 92, 138, 3, 137, 24, 1323, 117, 70, 36, 166, 15, 13, 79, 113, 52, 59, 26, 51, 29, 45, 201, 939, 16, 227, 119, 797, 32, 46, 65, 139, 2, 47, 132, 57, 1636, 68, 18, 130, 49, 60, 37, 30, 160, 134, 106, 23, 28, 88, 774, 40, 31, 163, 42, 6, 192, 224, 11, 75, 71, 86, 164, 9, 17, 165, 102, 145, 814, 337, 63, 7, 21, 94, 120, 80, 44, 112, 5, 118, 405, 41, 54, 10, 53, 89, 97, 19, 907] # boolq
-                    else:
-                        raise NotImplementedError
-                        
-                    if torch.distributed.get_rank() == 0:
-                        print(extra_id_list)
-                        print(tokenizer.decode(extra_id_list))
-                    prompt_config[t]["init_ids"].extend(extra_id_list)
-                elif init_from_label:
-                    all_label_ids = prompt_config["all_label_ids"]
-                    repeat_num = 100 // len(all_label_ids) + 1
-                    extra_id_list = (all_label_ids * repeat_num)[:100]
-                    if torch.distributed.get_rank() == 0:
-                        print(extra_id_list)
-                        print(tokenizer.decode(extra_id_list))
-                    prompt_config[t]["init_ids"].extend(extra_id_list)
-                else:
-                    prompt_config[t]["init_ids"].extend(tokenizer.convert_tokens_to_ids([prompt_config[t]["default_init_token"] for _ in range(pad_num)]))
-                prompt_config[t]["init_ids"] = torch.tensor(prompt_config[t]["init_ids"], dtype=torch.long).to(device)
+                prompt_config[t]["init_ids"].extend(tokenizer.convert_tokens_to_ids([prompt_config[t]["default_init_token"] for _ in range(pad_num)]))
 
     data_config = {
         "boolq": {
@@ -708,12 +516,6 @@ def main():
         },
         "rte": {
             "dataset": RTEDataset,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "copa": {
-            "dataset": COPADataset,
             "eval_func": evaluate,
             "eval_metric": acc_metric,
             "cache_path": None,
@@ -736,116 +538,8 @@ def main():
             "eval_metric": acc_metric,
             "cache_path": None,
         },
-        "race_man": {
-            "dataset": RACEDatasetMan,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
         "race_from_pretrain": {
             "dataset": RACEDatasetFromPretrain,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "race_from_lm": {
-            "dataset": RACEDatasetFromLM,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "race_m_gen_random": {
-            "dataset": RACEMDatasetGenRandom,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "race_m_gen_vocab": {
-            "dataset": RACEMDatasetGenVocab,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "race_from_pretrain_label2": {
-            "dataset": RACEDatasetFromPretrainLabel2,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "race_from_pretrain_label3": {
-            "dataset": RACEDatasetFromPretrainLabel3,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "race_from_pretrain_label4": {
-            "dataset": RACEDatasetFromPretrainLabel4,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "race_h_gen_random": {
-            "dataset": RACEHDatasetGenRandom,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "race_h_gen_vocab": {
-            "dataset": RACEHDatasetGenVocab,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "boolq_man": {
-            "dataset": BoolQDatasetMan,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "boolq_man_2": {
-            "dataset": BoolQDatasetMan2,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "boolq_man_3": {
-            "dataset": BoolQDatasetMan3,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "boolq_gen_random": {
-            "dataset": BoolQDatasetGenRandom,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "boolq_man_vocab2": {
-            "dataset": BoolQDatasetManVocab2,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "boolq_man_vocab3": {
-            "dataset": BoolQDatasetManVocab3,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "boolq_man_vocab4": {
-            "dataset": BoolQDatasetManVocab4,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "boolq_gen_raw": {
-            "dataset": BoolQDatasetGenRaw,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },        
-        "boolq_gen_vocab": {
-            "dataset": BoolQDatasetGenVocab,
             "eval_func": evaluate,
             "eval_metric": acc_metric,
             "cache_path": None,
@@ -856,86 +550,14 @@ def main():
             "eval_metric": acc_metric,
             "cache_path": None,
         },
-        "boolq_from_lm": {
-            "dataset": BoolQDatasetFromLM,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "rte_man": {
-            "dataset": RTEDatasetMan,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "rte_gen_random": {
-            "dataset": RTEDatasetGenRandom,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "rte_gen_vocab": {
-            "dataset": RTEDatasetGenVocab,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
         "rte_from_pretrain_uni": {
             "dataset": RTEDatasetFromPretrainUni,
             "eval_func": evaluate,
             "eval_metric": acc_metric,
             "cache_path": None,
         },
-        "rte_from_lm": {
-            "dataset": RTEDatasetFromLM,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "cb_man": {
-            "dataset": CBDatasetMan,
-            "eval_func": evaluate,
-            "eval_metric": acc_f1_metric,
-            "cache_path": None,
-        },
-        "cb_gen_random": {
-            "dataset": CBDatasetGenRandom,
-            "eval_func": evaluate,
-            "eval_metric": acc_f1_metric,
-            "cache_path": None,
-        },
-        "cb_gen_vocab": {
-            "dataset": CBDatasetGenVocab,
-            "eval_func": evaluate,
-            "eval_metric": acc_f1_metric,
-            "cache_path": None,
-        },
         "cb_from_pretrain_uni": {
             "dataset": CBDatasetFromPretrainUni,
-            "eval_func": evaluate,
-            "eval_metric": acc_f1_metric,
-            "cache_path": None,
-        },
-        "cb_from_lm": {
-            "dataset": CBDatasetFromLM,
-            "eval_func": evaluate,
-            "eval_metric": acc_f1_metric,
-            "cache_path": None,
-        },
-        "cb_from_pretrain_label2": {
-            "dataset": CBDatasetLable2,
-            "eval_func": evaluate,
-            "eval_metric": acc_f1_metric,
-            "cache_path": None,
-        },
-        "cb_from_pretrain_label3": {
-            "dataset": CBDatasetLable3,
-            "eval_func": evaluate,
-            "eval_metric": acc_f1_metric,
-            "cache_path": None,
-        },
-        "cb_from_pretrain_label4": {
-            "dataset": CBDatasetLable4,
             "eval_func": evaluate,
             "eval_metric": acc_f1_metric,
             "cache_path": None,
@@ -946,80 +568,8 @@ def main():
             "eval_metric": acc_metric,
             "cache_path": None,
         },
-        "sst2_man": {
-            "dataset": SST2DatasetMan,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "sst2_man_2": {
-            "dataset": SST2DatasetMan2,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "sst2_man_3": {
-            "dataset": SST2DatasetMan3,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "sst2_man_vocab2": {
-            "dataset": SST2DatasetManVocab2,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "sst2_man_vocab3": {
-            "dataset": SST2DatasetManVocab3,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "sst2_man_vocab4": {
-            "dataset": SST2DatasetManVocab4,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
         "sst2_from_mc": {
             "dataset": SST2DatasetFromMC,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None
-        },
-        "sst2_mc": {
-            "dataset": SST2MCDataset,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None
-        },
-        "sst2_from_mc_man": {
-            "dataset": SST2DatasetFromMCMan,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None
-        },
-        "sst2_gen_raw": {
-            "dataset": SST2DatasetGenRaw,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None
-        },
-        "sst2_gen_random": {
-            "dataset": SST2DatasetGenRandom,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None
-        },
-        "sst2_from_lm": {
-            "dataset": SST2DatasetFromLM,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None
-        },
-        "sst2_gen_vocab": {
-            "dataset": SST2DatasetGenVocab,
             "eval_func": evaluate,
             "eval_metric": acc_metric,
             "cache_path": None
@@ -1030,84 +580,12 @@ def main():
             "eval_metric": acc_metric,
             "cache_path": None,
         },
-        "sst5_man": {
-            "dataset": SST5DatasetMan,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
         "sst5_from_mc": {
             "dataset": SST5DatasetFromMC,
             "eval_func": evaluate,
             "eval_metric": acc_metric,
             "cache_path": None,
         },
-        "sst5_from_mc_man": {
-            "dataset": SST5DatasetFromMCMan,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "sst5_gen_random": {
-            "dataset": SST5DatasetGenRandom,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None
-        },
-        "sst5_gen_vocab": {
-            "dataset": SST5DatasetGenVocab,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None
-        },
-        "sst5_from_mc_man": {
-            "dataset": SST5DatasetFromLM,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "sst5_from_lm": {
-            "dataset": SST5DatasetFromLM,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "dbpedia": {
-            "dataset": DBPediaDataset,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "dbpedia_mc": {
-            "dataset": DBPediaDatasetMC,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "yahoo": {
-            "dataset": YahooDataset,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "yahoo_mc": {
-            "dataset": YahooDatasetMC,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "dbpedia_from_pretrain_uni": {
-            "dataset": DBPediaDatasetMC,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "qa": {
-            "dataset": QADataset,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        }
     }
 
     if args.do_train:

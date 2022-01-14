@@ -39,7 +39,7 @@ CKPT_PATH="/mnt/sfs_turbo/gyx/enc-dec-pretrain-dense/checkpoints/checkpoint-4-19
 SAVE_PATH="${WORKING_DIR}/results/cmnli/few-shot/full_model/lr${LR}_G${GRAD_ACC}_num${NUM}/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
-TOKENIZER_PATH="${WORKING_DIR}/bpe_cn"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_cn"
 
 BATCH_SIZE=4
 TRAIN_ITER=-1

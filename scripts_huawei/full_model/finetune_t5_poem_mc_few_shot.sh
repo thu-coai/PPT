@@ -22,7 +22,7 @@ CKPT_PATH="/dataset/f1d6ea5b/gyx/CPM-2-dense/"
 SAVE_PATH="${WORKING_DIR}/results//poem_mc/few-shot/t5_few_shot${NUM}_lr${LR}const_G${GRAD_ACC}_seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
-TOKENIZER_PATH="${WORKING_DIR}/bpe_cn"
+TOKENIZER_PATH="${WORKING_DIR}/vocab_cn"
 
 BATCH_SIZE=16
 TRAIN_ITER=-1
