@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Pretrain Enc-Dec"""
-
-# Flag to use Pytorch ddp which uses overlapping communication and computation.
-USE_TORCH_DDP = False
+"""Training Enc-Dec"""
 
 import os
 import torch
@@ -137,14 +134,14 @@ def train(args, data_config, tokenizer, model, optimizer, lr_scheduler,
 
             # Logging.
             if global_step % args.log_interval == 0 and step % args.gradient_accumulation_steps == 0:
-                learning_rate = optimizer.param_groups[0]['lr']
+                learning_rate = optimizer.param_groups[0]["lr"]
                 avg_lm_loss = total_loss / (args.log_interval * args.gradient_accumulation_steps)
-                log_string = 'epoch {:3d}/{:3d} |'.format(e, args.epochs)
-                log_string += ' global iteration {:8d}/{:8d} |'.format(global_step, args.train_iters)
-                log_string += ' learning rate {:.3} |'.format(learning_rate)
-                log_string += ' lm loss {:.6} |'.format(avg_lm_loss)
+                log_string = "epoch {:3d}/{:3d} |".format(e, args.epochs)
+                log_string += " global iteration {:8d}/{:8d} |".format(global_step, args.train_iters)
+                log_string += " learning rate {:.3} |".format(learning_rate)
+                log_string += " lm loss {:.6} |".format(avg_lm_loss)
                 if args.fp16:
-                    log_string += ' loss scale {:.1f} |'.format(optimizer.cur_scale if args.deepspeed else optimizer.loss_scale)
+                    log_string += " loss scale {:.1f} |".format(optimizer.cur_scale if args.deepspeed else optimizer.loss_scale)
                 print_rank_0(log_string)
                 save_rank_0(args, log_string)
                 total_loss = 0.0
@@ -155,7 +152,7 @@ def train(args, data_config, tokenizer, model, optimizer, lr_scheduler,
 
             # Evaluation
             if args.eval_interval and global_step % args.eval_interval == 0 and step % args.gradient_accumulation_steps == 0 and args.do_valid:
-                prefix = 'iteration {} | '.format(global_step)
+                prefix = "iteration {} | ".format(global_step)
                 dev_loss, dev_acc = eval_func(args, tokenizer, data_config, dev_dataset, dev_dataloader, model, device, prompt_config, mode="dev", save_res=True)
                 eval_loss, eval_acc = eval_func(args, tokenizer, data_config, eval_dataset, eval_dataloader, model, device, prompt_config, mode="test", save_res=True)
 
@@ -187,7 +184,7 @@ def train(args, data_config, tokenizer, model, optimizer, lr_scheduler,
     return global_step
 
 
-def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: EncDecDataset, eval_data_loader, model, device, prompt_config, mode='dev', save_res=False):
+def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: EncDecDataset, eval_data_loader, model, device, prompt_config, mode="dev", save_res=False):
     """Evaluation."""
 
     # Turn on evaluation mode which disables dropout.
@@ -212,10 +209,7 @@ def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: EncDec
 
             gathered_logits = torch.cat(logits_list, dim=-1)
 
-            if args.from_lm:
-                pred_token_logits = gathered_logits[:, 0, :]
-            else:
-                pred_token_logits = gathered_logits[:, 1, :]
+            pred_token_logits = gathered_logits[:, 1, :]
 
             preds = torch.argmax(pred_token_logits, dim=-1)
 
@@ -227,10 +221,8 @@ def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: EncDec
             torch.distributed.all_gather(gathered_idx, no_model_batch["idx"].contiguous(), mpu.get_data_parallel_group())
             all_idx.extend(gathered_idx)
 
-            if args.from_lm:
-                labels = no_model_batch["labels"][:, 0]
-            else:
-                labels = no_model_batch["labels"][:, 1]
+            labels = no_model_batch["labels"][:, 1]
+            
             gathered_labels = [torch.zeros_like(labels) for _ in range(mpu.get_data_parallel_world_size())]
             torch.distributed.all_gather(gathered_labels, labels.contiguous(), mpu.get_data_parallel_group())
             all_labels.extend(gathered_labels)
@@ -307,7 +299,7 @@ def load_data(args, data_config, data_type, tokenizer, prompt_config=None, ratio
         do_infer=do_infer,
         prompt_config=prompt_config)
 
-    if data_type == 'train':
+    if data_type == "train":
         sampler = RandomSampler(dataset)
         sampler.set_seed(args.seed)
     else:
@@ -342,7 +334,7 @@ def main():
     # Pytorch distributed.
     initialize_distributed(args)
     if torch.distributed.get_rank() == 0:
-        print('Pretrain Enc-Dec model')
+        print("Training Enc-Dec model")
         print_args(args)
         with open(os.path.join(args.save, "args.json"), "w") as f:
             json.dump(vars(args), f)
@@ -352,7 +344,7 @@ def main():
     device = torch.cuda.current_device()
 
     # setup tokenizer
-    tokenizer = EncDecTokenizer(os.path.join(args.tokenizer_path, 'spiece.model'))
+    tokenizer = EncDecTokenizer(os.path.join(args.tokenizer_path, "spiece.model"))
     
     with open(args.deepspeed_config, "r") as f:
         ds_config = json.load(f)
@@ -448,9 +440,9 @@ def main():
     }
 
     if args.do_train:
-        train_dataloader, train_dataset, random_sampler = load_data(args, data_config, 'train', tokenizer, prompt_config, ratio=args.train_ratio, num=args.train_num)
-        dev_dataloader, dev_dataset, _  = load_data(args, data_config, 'dev32', tokenizer, prompt_config, ratio=args.dev_ratio, num=args.dev_num)
-        eval_dataloader, eval_dataset, _ = load_data(args, data_config, 'valid', tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
+        train_dataloader, train_dataset, random_sampler = load_data(args, data_config, "train", tokenizer, prompt_config, ratio=args.train_ratio, num=args.train_num)
+        dev_dataloader, dev_dataset, _  = load_data(args, data_config, "dev32", tokenizer, prompt_config, ratio=args.dev_ratio, num=args.dev_num)
+        eval_dataloader, eval_dataset, _ = load_data(args, data_config, "valid", tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
         if args.train_iters == -1:
             args.train_iters = len(train_dataset) * args.epochs // (mpu.get_data_parallel_world_size() * args.batch_size * args.gradient_accumulation_steps)
     else:
@@ -467,7 +459,7 @@ def main():
         train(args, data_config, tokenizer, model, optimizer, lr_scheduler, train_dataset, train_dataloader, dev_dataset, dev_dataloader, eval_dataset, eval_dataloader, device, random_sampler, prompt_config)
 
     if args.do_eval:
-        eval_dataloader, eval_dataset, _ = load_data(args, data_config, 'valid', tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
+        eval_dataloader, eval_dataset, _ = load_data(args, data_config, "valid", tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
         eval_func = data_config[args.data_name]["eval_func"]
 
         loss, acc = eval_func(args, tokenizer, data_config, eval_dataset, eval_dataloader, model, device, prompt_config, mode="test")

@@ -15,15 +15,11 @@
 
 """Utilities for logging and serialization"""
 
-USE_TORCH_DDP = False
-
 import os
 import random
-import time
 import numpy as np
 import torch
 
-from torch.nn.parallel.distributed import DistributedDataParallel as torchDDP
 from fp16 import FP16_Optimizer
 import mpu
 import deepspeed
@@ -34,10 +30,7 @@ from learning_rates import AnnealingLR
 from model import EncDecModel, EncDecConfig
 from model import enc_dec_get_params_for_weight_decay_optimization, enc_dec_get_params_for_prompt_optimization
 
-if USE_TORCH_DDP:
-    from torch.nn.parallel.distributed import DistributedDataParallel as DDP
-else:
-    from model import DistributedDataParallel as DDP
+from model import DistributedDataParallel as DDP
 
 def print_rank_0(message):
     if torch.distributed.is_initialized():
@@ -99,12 +92,7 @@ def get_model(args, vocab_size, prompt_config=None):
         model = FP16_Module(model)
 
     # Wrap model for distributed training.
-    if USE_TORCH_DDP:
-        i = torch.cuda.current_device()
-        model = DDP(model, device_ids=[i], output_device=i,
-                    process_group=mpu.get_data_parallel_group())
-    else:
-        model = DDP(model)
+    model = DDP(model)
 
     return model
 
@@ -357,21 +345,6 @@ def load_checkpoint(model, optimizer, lr_scheduler, args, prompt_config=None):
     model.module.load_state_dict(sd["module"], strict=False)
 
     iteration = sd['iteration']
-                
-    # rng states.
-    if not release and not args.finetune and not args.no_load_rng:
-        try:
-            random.setstate(sd['random_rng_state'])
-            np.random.set_state(sd['np_rng_state'])
-            torch.set_rng_state(sd['torch_rng_state'])
-            torch.cuda.set_rng_state(sd['cuda_rng_state'])
-            mpu.get_cuda_rng_tracker().set_states(sd['rng_tracker_states'])
-        except KeyError:
-            print_rank_0('Unable to load optimizer from checkpoint {}, exiting. '
-                         'Specify --no-load-optim or --finetune to prevent '
-                         'attempting to load the optimizer '
-                         'state.'.format(checkpoint_name))
-            exit()
 
     torch.distributed.barrier()
     if mpu.get_data_parallel_rank() == 0:
