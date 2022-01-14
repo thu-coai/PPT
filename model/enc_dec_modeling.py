@@ -162,25 +162,3 @@ def enc_dec_get_params_for_prompt_optimization(module: nn.Module):
         print("print params", params)
     return params
 
-
-def enc_dec_get_params_for_optimization_wo_prompt(module: nn.Module):
-    weight_decay_params = {'params': []}
-    no_weight_decay_params = {'params': [], 'weight_decay': 0.0}
-    for t in module.named_modules():
-        if "prompt" in t[0]:
-            continue
-        module_ = t[1]
-        if isinstance(module_, (mpu.LayerNorm, nn.LayerNorm)):
-            no_weight_decay_params['params'].extend(
-                [p for p in list(module_._parameters.values())
-                 if p is not None])
-        else:
-            weight_decay_params['params'].extend(
-                [p for n, p in list(module_._parameters.items())
-                 if p is not None and n != 'bias'])
-            no_weight_decay_params['params'].extend(
-                [p for n, p in list(module_._parameters.items())
-                 if p is not None and n == 'bias'])
-
-    return weight_decay_params, no_weight_decay_params
-

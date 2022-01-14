@@ -18,7 +18,7 @@ CKPT_PATH="mnt/sfs_turbo/back-folder/enc-dec-pretrain-dense/checkpoints/checkpoi
 
 SAVE_PATH="${WORKING_DIR}/results/t5_finetune_math_lr${LR}const_baselr0.1const_continue_scratch/"
 LOG_FILE="${SAVE_PATH}/log.txt"
-DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
+DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_cn"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/math_model_tune_scratch.json"

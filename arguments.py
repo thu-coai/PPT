@@ -86,6 +86,8 @@ def add_training_args(parser: argparse.ArgumentParser):
     group.add_argument('--epochs', type=int, default=1)
     group.add_argument('--batch-size', type=int, default=4,
                        help='Data Loader batch size')
+    group.add_argument('--dev-batch-size', type=int, default=2,
+                       help='Data Loader batch size')
     group.add_argument('--gradient-accumulation-steps', type=int, default=1)
     group.add_argument('--weight-decay', type=float, default=0.01,
                        help='weight decay coefficient for L2 regularization')

@@ -1,7 +1,6 @@
 {
-    "init_scratch": true,
-    "fix_model": false,
-    "init_from_vocab": false,
+    "init_scratch": false,
+    "fix_model": true,
     "enc": {
         "prompt_len": 100,
         "init_tokens": "",

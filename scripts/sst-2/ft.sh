@@ -35,9 +35,9 @@ SEED=${3-1234}
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
 CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
 
-SAVE_PATH="${WORKING_DIR}/results/sst2/few-shot/full_model_lr${LR}_G${GRAD_ACC}_num32/seed${SEED}/"
+SAVE_PATH="${WORKING_DIR}/results/sst2/few-shot-32/ft/lr${LR}_G${GRAD_ACC}/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
-DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
+DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
 BATCH_SIZE=4
@@ -79,7 +79,6 @@ OPTS+=" --deepspeed_config ${DS_CONFIG}"
 OPTS+=" --do-train"
 OPTS+=" --do-valid"
 OPTS+=" --seed ${SEED}"
-# OPTS+=" --do-eval"
 OPTS+=" --epochs ${EPOCHS}"
 
 CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/train.py ${OPTS}"

@@ -1,6 +1,6 @@
 import json
 from tokenization_t5 import EncDecTokenizer
-from EncDecDatasets import EncDecDataset
+from .EncDecDatasets import EncDecDataset
 
 
 class RTEDataset(EncDecDataset):

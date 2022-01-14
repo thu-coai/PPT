@@ -63,9 +63,6 @@ def forward_step(args, model_batch, no_model_batch, model, device, keep_enc_hidd
         losses = mpu.vocab_parallel_cross_entropy(logits.contiguous().float(), no_model_batch["labels"])
 
         loss_mask = no_model_batch["loss_mask"]
-        # if torch.distributed.get_rank() == 0:
-        #     print(losses)
-        # exit(0)
         losses = (losses * loss_mask).sum(-1) / loss_mask.sum(-1)
         loss = losses.mean()
 
@@ -159,8 +156,8 @@ def train(args, data_config, tokenizer, model, optimizer, lr_scheduler,
             # Evaluation
             if args.eval_interval and global_step % args.eval_interval == 0 and step % args.gradient_accumulation_steps == 0 and args.do_valid:
                 prefix = 'iteration {} | '.format(global_step)
-                dev_loss, dev_acc = eval_func(args, tokenizer, data_config, dev_dataset, dev_dataloader, model, device, prompt_config, mode="dev")
-                eval_loss, eval_acc = eval_func(args, tokenizer, data_config, eval_dataset, eval_dataloader, model, device, prompt_config, mode="test")
+                dev_loss, dev_acc = eval_func(args, tokenizer, data_config, dev_dataset, dev_dataloader, model, device, prompt_config, mode="dev", save_res=True)
+                eval_loss, eval_acc = eval_func(args, tokenizer, data_config, eval_dataset, eval_dataloader, model, device, prompt_config, mode="test", save_res=True)
 
                 model.train()
                 log_string = prefix + " dev_loss: " + str(dev_loss) + " | dev acc(mrr, f1): " + str(dev_acc) 
@@ -190,7 +187,7 @@ def train(args, data_config, tokenizer, model, optimizer, lr_scheduler,
     return global_step
 
 
-def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: EncDecDataset, eval_data_loader, model, device, prompt_config, mode='dev'):
+def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: EncDecDataset, eval_data_loader, model, device, prompt_config, mode='dev', save_res=False):
     """Evaluation."""
 
     # Turn on evaluation mode which disables dropout.
@@ -247,34 +244,36 @@ def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: EncDec
     all_labels = torch.cat(all_labels, dim=0).cpu().tolist()
 
     eval_metrc = data_config[args.data_name]["eval_metric"]
-    res = eval_metrc(args, tokenizer, all_preds, all_labels)
+    res = eval_metrc(args, tokenizer, all_preds, all_labels, save_res=save_res)
 
     return total_loss, res
 
 
-def acc_metric(args, tokenizer: EncDecTokenizer, all_preds, all_labels):
+def acc_metric(args, tokenizer: EncDecTokenizer, all_preds, all_labels, save_res=False):
     acc = sum([int(p == l) for p, l in zip(all_preds, all_labels)]) / len(all_preds)
     
-    with open(os.path.join(args.save, "{}.txt".format(acc)), "w") as f:
-        for p, l in zip(all_preds, all_labels):
-            f.write(str(p) + "\t\t" + str(l) + "\n")
-            if isinstance(p, list):
-                f.write(tokenizer.decode(p) + "\t\t" + tokenizer.decode(l) + "\n")
-            f.write("\n")
+    if save_res:
+        with open(os.path.join(args.save, "{}.txt".format(acc)), "w") as f:
+            for p, l in zip(all_preds, all_labels):
+                f.write(str(p) + "\t\t" + str(l) + "\n")
+                if isinstance(p, list):
+                    f.write(tokenizer.decode(p) + "\t\t" + tokenizer.decode(l) + "\n")
+                f.write("\n")
 
     return acc
 
 
-def acc_f1_metric(args, tokenizer: EncDecTokenizer, all_preds, all_labels):
+def acc_f1_metric(args, tokenizer: EncDecTokenizer, all_preds, all_labels, save_res=False):
     f1_macro = f1_score(all_labels, all_preds, average="macro")
     acc = sum([int(p == l) for p, l in zip(all_preds, all_labels)]) / len(all_preds)
 
-    with open(os.path.join(args.save, "{}.txt".format(f1_macro)), "w") as f:
-        for p, l in zip(all_preds, all_labels):
-            f.write(str(p) + "\t\t" + str(l) + "\n")
-            if isinstance(p, list):
-                f.write(tokenizer.decode(p) + "\t\t" + tokenizer.decode(l) + "\n")
-            f.write("\n")
+    if save_res:
+        with open(os.path.join(args.save, "{}.txt".format(f1_macro)), "w") as f:
+            for p, l in zip(all_preds, all_labels):
+                f.write(str(p) + "\t\t" + str(l) + "\n")
+                if isinstance(p, list):
+                    f.write(tokenizer.decode(p) + "\t\t" + tokenizer.decode(l) + "\n")
+                f.write("\n")
 
     return [acc, f1_macro]
 
@@ -289,6 +288,8 @@ def load_data(args, data_config, data_type, tokenizer, prompt_config=None, ratio
         args.eval_batch_size = args.batch_size
     if data_type == "train":
         global_batch_size = args.batch_size * world_size
+    elif data_type == "dev32":
+        global_batch_size = args.dev_batch_size * world_size
     else:
         global_batch_size = args.eval_batch_size * world_size
 
@@ -369,6 +370,7 @@ def main():
                 prompt_config[t]["init_ids"] = tokenizer.encode(prompt_config[t]["init_tokens"])
                 pad_num = prompt_config[t]["prompt_len"] - len(prompt_config[t]["init_ids"])
                 prompt_config[t]["init_ids"].extend(tokenizer.convert_tokens_to_ids([prompt_config[t]["default_init_token"] for _ in range(pad_num)]))
+                prompt_config[t]["init_ids"] = torch.tensor(prompt_config[t]["init_ids"], dtype=torch.long).to(device)
 
     data_config = {
         "boolq": {

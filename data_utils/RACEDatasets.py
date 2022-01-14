@@ -1,6 +1,6 @@
 import json
 from tokenization_t5 import EncDecTokenizer
-from EncDecDatasets import EncDecDataset
+from .EncDecDatasets import EncDecDataset
 
 class RACEDataset(EncDecDataset):
     def __init__(self, args, tokenizer: EncDecTokenizer, path, split, ratio=1, num=-1, prefix=None, add_target_post=False, cache_path=None, do_infer=False, prompt_config=None):

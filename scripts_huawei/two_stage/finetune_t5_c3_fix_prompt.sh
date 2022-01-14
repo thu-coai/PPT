@@ -18,7 +18,7 @@ CKPT_PATH="${WORKING_DIR}/results/t5_finetune_c3_2_lr0.1const_prompt_3/${INIT_CK
 
 SAVE_PATH="${WORKING_DIR}/results/t5_finetune_c3_2_lr${LR}const_baselr0.1const_continue_${INIT_CKPT}_fix_prompt/"
 LOG_FILE="${SAVE_PATH}/log.txt"
-DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
+DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_cn"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/c3_model_tune_fix_prompt.json"

@@ -35,14 +35,15 @@ CKPT=${4-nss_10g_1_1_4_uni_lr0.1}
 CKPT_ITER=${5-16000}
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
-CKPT_PATH="/mnt/sfs_turbo/gyx/CPM-2-Pretrain-En/results/${CKPT}/${CKPT_ITER}"
+CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
+PROMPT_PATH="${WORKING_DIR}/prompt_embeds/pretrain-${CKPT}-${CKPT_ITER}.pt"
 
-SAVE_PATH="${WORKING_DIR}/results/cb/few-shot/lr${LR}_G${GRAD_ACC}_prompt_from_pretrain_uni_${CKPT}_${CKPT_ITER}_num32_bs8/seed${SEED}/"
+SAVE_PATH="${WORKING_DIR}/results/cb/few-shot-32/uni_ppt/lr${LR}_G${GRAD_ACC}/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
-DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_full_model.json"
+DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
-PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/cb/cb_from_pretrain.json"
+PROMPT_CONFIG="${WORKING_DIR}/configs/ppt.json"
 
 BATCH_SIZE=8
 EVAL_BATCH_SIZE=2
@@ -60,9 +61,10 @@ OPTS+=" --train-iters ${TRAIN_ITER}"
 OPTS+=" --save ${SAVE_PATH}"
 OPTS+=" --log-file ${LOG_FILE}"
 OPTS+=" --load ${CKPT_PATH}"
+OPTS+=" --load_prompt ${PROMPT_PATH}"
 OPTS+=" --data-path ${DATA_PATH}"
 OPTS+=" --data-ext ${DATA_EXT}"
-OPTS+=" --data-name cb_from_pretrain_uni"
+OPTS+=" --data-name cb_uni"
 OPTS+=" --distributed-backend nccl"
 OPTS+=" --lr ${LR}"
 OPTS+=" --no-load-optim"
@@ -83,11 +85,8 @@ OPTS+=" --deepspeed_config ${DS_CONFIG}"
 OPTS+=" --do-train"
 OPTS+=" --do-valid"
 OPTS+=" --seed ${SEED}"
-# OPTS+=" --train-num ${NUM}"
-# OPTS+=" --do-eval"
 OPTS+=" --prompt-tune"
 OPTS+=" --prompt-config ${PROMPT_CONFIG}"
-# OPTS+=" --do_infer"
 OPTS+=" --epochs ${EPOCHS}"
 
 CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/train.py ${OPTS}"
