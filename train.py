@@ -19,8 +19,6 @@
 USE_TORCH_DDP = False
 
 import os
-import re
-import random
 import torch
 import json
 import shutil
@@ -37,8 +35,6 @@ from utils import setup_model_and_optimizer, set_random_seed, initialize_distrib
 
 from samplers import DistributedBatchSampler, RandomSampler
 from data_utils import *
-
-import torch.nn.functional as F
 
 from torch.utils.data import DataLoader, SequentialSampler
 
@@ -194,7 +190,7 @@ def train(args, data_config, tokenizer, model, optimizer, lr_scheduler,
     return global_step
 
 
-def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: CPM2Dataset, eval_data_loader, model, device, prompt_config, mode='dev'):
+def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: EncDecDataset, eval_data_loader, model, device, prompt_config, mode='dev'):
     """Evaluation."""
 
     # Turn on evaluation mode which disables dropout.
@@ -206,7 +202,6 @@ def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: CPM2Da
     all_idx = []
     all_preds = []
     all_labels = []
-    all_true_scores = []
 
     with torch.no_grad():
         for model_batch, no_model_batch in eval_data_loader:
@@ -253,138 +248,6 @@ def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: CPM2Da
 
     eval_metrc = data_config[args.data_name]["eval_metric"]
     res = eval_metrc(args, tokenizer, all_preds, all_labels)
-
-    return total_loss, res
-
-
-def top_k_logits(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
-    # This function has been mostly taken from huggingface conversational ai code at
-    # https://medium.com/huggingface/how-to-build-a-state-of-the-art-conversational-ai-with-transfer-learning-2d818ac26313
-
-    if top_k > 0:
-        # Remove all tokens with a probability less than the last token of the top-k
-        indices_to_remove = logits < torch.topk(logits, top_k)[0][..., -1, None]
-        logits[indices_to_remove] = filter_value
-
-    batch_size = logits.size()[0]
-    if top_p > 0.0:
-        logits=logits.view(batch_size, -1).contiguous()
-        for logit in logits:
-            sorted_logits, sorted_indices = torch.sort(logit, descending=True)
-            cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
-
-            # Remove tokens with cumulative probability above the threshold
-            sorted_indices_to_remove = cumulative_probs > top_p
-            # Shift the indices to the right to keep also the first token above the threshold
-            sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
-            sorted_indices_to_remove[..., 0] = 0
-            indices_to_remove = sorted_indices[sorted_indices_to_remove]
-            logit[indices_to_remove] = filter_value
-
-        logits=logits.view(batch_size, -1).contiguous()
-
-    return logits
-
-
-def evaluate_gen(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: CPM2Dataset, eval_data_loader, model, device, prompt_config, mode="dev"):
-    """Evaluation."""
-
-    # Turn on evaluation mode which disables dropout.
-    model.eval()
-
-    total_loss = 0.0
-    step = 0
-
-    all_preds = []
-    all_labels = []
-    all_idx = []
-
-    with torch.no_grad():
-        for model_batch, no_model_batch in eval_data_loader:
-            
-            forw_out = forward_step(args, model_batch, no_model_batch, model, device, keep_enc_hidden=True, do_infer=(mode=="infer"))
-            loss = forw_out["loss"].item() if "loss" in forw_out else 0
-            total_loss += loss
-
-            enc_hidden_states = forw_out["enc_hidden_states"]
-
-            dec_prompt_len = 0
-            if prompt_config is not None:
-                dec_prompt_len = prompt_config["dec"]["prompt_len"]
-            # for generating responses
-            # we only use the <go> token, so truncate other tokens
-            dec_input_ids = model_batch['dec_input_ids'][..., :1 + dec_prompt_len]
-            dec_attention_mask = model_batch['dec_attention_mask'][..., :1 + dec_prompt_len, :1 + dec_prompt_len]
-            # # we use past_key_values, so only the current token mask is needed
-            cross_attention_mask = model_batch['cross_attention_mask'][..., :1 + dec_prompt_len, :]
-
-            unfinished_sents = model_batch['enc_input_ids'].new(model_batch['enc_input_ids'].size(0)).fill_(1)
-            output_ids = model_batch['enc_input_ids'].new_zeros([model_batch['enc_input_ids'].size(0), 0])
-            past_key_values = None
-
-            gen_len = 0
-            while gen_len < args.out_seq_length:
-                if unfinished_sents.max() == 0:
-                    tokens_to_add = tokenizer.pad_id * (1 - unfinished_sents)
-                    output_ids = torch.cat([output_ids, tokens_to_add.unsqueeze(-1)], dim=-1)
-
-                else:
-                    dec_outputs = model(
-                        dec_input_ids=dec_input_ids,
-                        dec_attention_mask=dec_attention_mask,
-                        cross_attention_mask=cross_attention_mask,
-                        enc_hidden_states=enc_hidden_states,
-                        past_key_values=past_key_values,
-                    )
-                    lm_logits = dec_outputs["lm_logits"]
-                    past_key_values = dec_outputs['past_key_values']
-
-                    gathered_lm_logits = [torch.zeros_like(lm_logits).to(device) for _ in range(mpu.get_model_parallel_world_size())]
-                    torch.distributed.all_gather(gathered_lm_logits, lm_logits.data, mpu.get_model_parallel_group())
-
-                    lm_logits = torch.cat(gathered_lm_logits, dim=-1)
-                    next_token_logits = lm_logits[:, -1, :] / args.temperature
-                    if args.top_k is None and args.top_p is None:
-                        next_token = torch.argmax(next_token_logits, dim=-1)
-                    else:
-                        next_token_logscores = top_k_logits(next_token_logits, top_k=args.top_k, top_p=args.top_p)
-                        probs = F.softmax(next_token_logscores, dim=-1)
-                        next_token = torch.multinomial(probs.float(), num_samples=1).squeeze(1)
-                    tokens_to_add = next_token * unfinished_sents + tokenizer.pad_id * (1 - unfinished_sents)
-                    dec_input_ids = tokens_to_add.unsqueeze(-1)
-                    output_ids = torch.cat([output_ids, tokens_to_add.unsqueeze(-1)], dim=-1)
-                    dec_attention_mask = torch.cat([dec_attention_mask[:, :, -1:, :], dec_attention_mask[:, :, -1:, -1:]], dim=-1)
-                    cross_attention_mask = cross_attention_mask[:, :, -1:, :]
-
-                gen_len += 1
-                unfinished_sents.mul_(tokens_to_add.ne(tokenizer.get_sentinel_id(1)).long())
-            
-            gathered_preds = [torch.zeros_like(output_ids) for _ in range(mpu.get_data_parallel_world_size())]
-            torch.distributed.all_gather(gathered_preds, output_ids, mpu.get_data_parallel_group())
-            all_preds.extend(gathered_preds)
-            
-            gathered_idx = [torch.zeros_like(no_model_batch["idx"]) for _ in range(mpu.get_data_parallel_world_size())]
-            torch.distributed.all_gather(gathered_idx, no_model_batch["idx"].contiguous(), mpu.get_data_parallel_group())
-            all_idx.extend(gathered_idx)
-
-            no_model_batch["labels"] = no_model_batch["labels"][:, dec_prompt_len:].contiguous()
-
-            gathered_labels = [torch.zeros_like(no_model_batch["labels"]) for _ in range(mpu.get_data_parallel_world_size())]
-            torch.distributed.all_gather(gathered_labels, no_model_batch["labels"], mpu.get_data_parallel_group())
-            all_labels.extend(gathered_labels)
-
-            step += 1
-
-    total_loss /= step
-
-    all_idx = torch.cat(all_idx, dim=0).cpu().tolist()
-    all_preds = torch.cat(all_preds, dim=0).cpu().tolist()
-    all_preds = [e[:e.index(tokenizer.pad_id)] if tokenizer.pad_id in e else e for e in all_preds]
-    all_labels = torch.cat(all_labels, dim=0).cpu().tolist()
-    all_labels = [e[:e.index(tokenizer.pad_id)] if tokenizer.pad_id in e else e for e in all_labels]
-
-    eval_metrc = data_config[args.data_name]["eval_metric"]
-    res = eval_metrc(args, tokenizer, all_preds, all_labels, eval_dataset)
 
     return total_loss, res
 
@@ -514,8 +377,20 @@ def main():
             "eval_metric": acc_metric,
             "cache_path": None,
         },
+        "boolq_uni": {
+            "dataset": BoolQDatasetUni,
+            "eval_func": evaluate,
+            "eval_metric": acc_metric,
+            "cache_path": None,
+        },
         "rte": {
             "dataset": RTEDataset,
+            "eval_func": evaluate,
+            "eval_metric": acc_metric,
+            "cache_path": None,
+        },
+        "rte_uni": {
+            "dataset": RTEDatasetUni,
             "eval_func": evaluate,
             "eval_metric": acc_metric,
             "cache_path": None,
@@ -526,40 +401,22 @@ def main():
             "eval_metric": acc_f1_metric,
             "cache_path": None,
         },
+        "cb_uni": {
+            "dataset": CBDatasetUni,
+            "eval_func": evaluate,
+            "eval_metric": acc_f1_metric,
+            "cache_path": None,
+        },
         "race": {
             "dataset": RACEDataset,
             "eval_func": evaluate,
             "eval_metric": acc_metric,
             "cache_path": None,
         },
-        "race2": {
-            "dataset": RACEDataset2,
+        "race_uni": {
+            "dataset": RACEDatasetUni,
             "eval_func": evaluate,
             "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "race_from_pretrain": {
-            "dataset": RACEDatasetFromPretrain,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "boolq_from_pretrain_uni": {
-            "dataset": BoolQDatasetFromPretrainUni,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "rte_from_pretrain_uni": {
-            "dataset": RTEDatasetFromPretrainUni,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "cb_from_pretrain_uni": {
-            "dataset": CBDatasetFromPretrainUni,
-            "eval_func": evaluate,
-            "eval_metric": acc_f1_metric,
             "cache_path": None,
         },
         "sst2": {
@@ -568,8 +425,8 @@ def main():
             "eval_metric": acc_metric,
             "cache_path": None,
         },
-        "sst2_from_mc": {
-            "dataset": SST2DatasetFromMC,
+        "sst2_uni": {
+            "dataset": SST2DatasetUni,
             "eval_func": evaluate,
             "eval_metric": acc_metric,
             "cache_path": None
@@ -580,8 +437,8 @@ def main():
             "eval_metric": acc_metric,
             "cache_path": None,
         },
-        "sst5_from_mc": {
-            "dataset": SST5DatasetFromMC,
+        "sst5_uni": {
+            "dataset": SST5DatasetUni,
             "eval_func": evaluate,
             "eval_metric": acc_metric,
             "cache_path": None,

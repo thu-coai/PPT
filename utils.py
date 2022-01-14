@@ -68,26 +68,6 @@ def save_rank_0(args, message):
             f.flush()
 
 
-def print_params_min_max_norm(optimizer, iteration):
-    """Print min, max, and norm of all parameters."""
-    index = 0
-    rank = torch.distributed.get_rank()
-    string = 'iteration, rank, index, model-parallel,min, max, norm\n'
-    optimizer_ = optimizer
-    if isinstance(optimizer, FP16_Optimizer):
-        optimizer_ = optimizer.optimizer
-    for param_group in optimizer_.param_groups:
-        for param in param_group['params']:
-            index += 1
-            min_ = param.data.min()
-            max_ = param.data.max()
-            norm = param.data.norm()
-            string += '{:7d}, {:4d}, {:4d}, {:2d}, '.format(
-                iteration, rank, index, int(param.model_parallel))
-            string += '{:.6E}, {:.6E}, {:.6E}\n'.format(min_, max_, norm)
-    print(string, flush=True)
-
-
 def get_model(args, vocab_size, prompt_config=None):
     """Build the model."""
 
@@ -286,87 +266,6 @@ def set_random_seed(seed):
         np.random.seed(seed)
         torch.manual_seed(seed)
         mpu.model_parallel_cuda_manual_seed(seed)
-
-
-class Timers:
-    """Group of timers."""
-
-    class Timer:
-        """Timer."""
-
-        def __init__(self, name):
-            self.name_ = name
-            self.elapsed_ = 0.0
-            self.started_ = False
-            self.start_time = time.time()
-
-        def start(self):
-            """Start the timer."""
-            assert not self.started_, 'timer has already been started'
-            torch.cuda.synchronize()
-            self.start_time = time.time()
-            self.started_ = True
-
-        def stop(self):
-            """Stop the timer."""
-            assert self.started_, 'timer is not started'
-            torch.cuda.synchronize()
-            self.elapsed_ += (time.time() - self.start_time)
-            self.started_ = False
-
-        def reset(self):
-            """Reset timer."""
-            self.elapsed_ = 0.0
-            self.started_ = False
-
-        def elapsed(self, reset=True):
-            """Calculate the elapsed time."""
-            started_ = self.started_
-            # If the timing in progress, end it first.
-            if self.started_:
-                self.stop()
-            # Get the elapsed time.
-            elapsed_ = self.elapsed_
-            # Reset the elapsed time
-            if reset:
-                self.reset()
-            # If timing was in progress, set it back.
-            if started_:
-                self.start()
-            return elapsed_
-
-    def __init__(self):
-        self.timers = {}
-
-    def __call__(self, name):
-        if name not in self.timers:
-            self.timers[name] = self.Timer(name)
-        return self.timers[name]
-
-    def log(self, names, normalizer=1.0, reset=True):
-        """Log a group of timers."""
-        assert normalizer > 0.0
-        string = 'time (ms)'
-        for name in names:
-            elapsed_time = self.timers[name].elapsed(
-                reset=reset) * 1000.0/ normalizer
-            string += ' | {}: {:.2f}'.format(name, elapsed_time)
-        print_rank_0(string)
-
-
-def report_memory(name):
-    """Simple GPU memory report."""
-
-    mega_bytes = 1024.0 * 1024.0
-    string = name + ' memory (MB)'
-    string += ' | allocated: {}'.format(
-        torch.cuda.memory_allocated() / mega_bytes)
-    string += ' | max allocated: {}'.format(
-        torch.cuda.max_memory_allocated() / mega_bytes)
-    string += ' | cached: {}'.format(torch.cuda.memory_cached() / mega_bytes)
-    string += ' | max cached: {}'.format(
-        torch.cuda.max_memory_cached()/ mega_bytes)
-    print_rank_0(string)
 
 
 def get_checkpoint_name(checkpoints_path, iteration, release=False, zero=False):
@@ -625,55 +524,3 @@ def load_checkpoint(model, optimizer, lr_scheduler, args, prompt_config=None):
         print('  successfully loaded {}'.format(checkpoint_name))
 
     return iteration
-
-
-def load_weights(src, dst, dst2src=False):
-    """
-    Loads weights from src to dst via in place copy.
-    src is a huggingface gpt2model, while dst is one of our models.
-    dst2src=True loads parameters from our models into huggingface's.
-    ^dst2src is still untested
-    """
-    conv_layer = 'Conv1D' in  str(type(src))
-    for n, p in src.named_parameters():
-        if dst2src:
-            data = dst._parameters[n].data
-            load = p.data
-        else:
-            data = p.data
-            load = dst._parameters[n].data
-        if conv_layer and 'weight' in n:
-            data = data.t().contiguous()
-        load.copy_(data)
-#        dst._parameters[n].data.copy_(data)
-
-def load_mlp(our, oai, dst2src=False):
-    load_weights(oai.c_fc, our.dense_h_to_4h, dst2src)
-    load_weights(oai.c_proj, our.dense_4h_to_h, dst2src)
-
-def load_attention(our, oai, dst2src=False):
-    load_weights(oai.c_attn, our.query_key_value, dst2src)
-    load_weights(oai.c_proj, our.dense, dst2src)
-
-def load_transformer_layer(our, oai, dst2src=False):
-    load_weights(oai.ln_1, our.input_layernorm, dst2src)
-    load_weights(oai.ln_2, our.post_attention_layernorm, dst2src)
-    load_mlp(our.mlp, oai.mlp, dst2src)
-    load_attention(our.attention, oai.attn, dst2src)
-
-def move_weights(our, oai, dst2src=False):
-    """
-    Loads weights from `oai` to `our` via in place copy.
-    `oai` is a huggingface gpt2model, while `our` is one of our models.
-    dst2src=True loads parameters from our models into huggingface's.
-    ^dst2src=True is still untested
-    """
-#    while isinstance(our, (torchDDP, model.distributed.DistributedDataParallel, FP16_Module)):
-#        our=our.module
-    transformer_model = oai.transformer
-    load_weights(transformer_model.ln_f, our.transformer.final_layernorm, dst2src)
-    load_weights(transformer_model.wte, our.word_embeddings, dst2src)
-    load_weights(transformer_model.wpe, our.position_embeddings, dst2src)
-
-    for our_layer, oai_layer in zip(our.transformer.layers, oai.transformer.h):
-        load_transformer_layer(our_layer, oai_layer, dst2src)
