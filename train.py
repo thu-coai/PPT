@@ -85,6 +85,9 @@ def train(args, data_config, tokenizer, model, optimizer, lr_scheduler,
           train_dataset, train_dataloader, dev_dataset, dev_dataloader, eval_dataset, eval_dataloader, device, random_sampler: RandomSampler, prompt_config):
     """Train the model."""
 
+    if torch.distributed.get_rank() == 0:
+        print("Train the model")
+
     eval_func = data_config[args.data_name]["eval_func"]
 
     # Turn on training mode which enables dropout.
@@ -352,6 +355,11 @@ def main():
                 prompt_config[t]["init_ids"].extend(tokenizer.convert_tokens_to_ids([prompt_config[t]["default_init_token"] for _ in range(pad_num)]))
                 prompt_config[t]["init_ids"] = torch.tensor(prompt_config[t]["init_ids"], dtype=torch.long).to(device)
 
+    adapter_config = None
+    if args.adapter_tune:
+        with open(args.adapter_config, "r") as f:
+            adapter_config = json.load(f)
+
     data_config = {
         "boolq": {
             "dataset": BoolQDataset,
@@ -441,7 +449,7 @@ def main():
     save_rank_0(args, log_string)
 
     # Model, optimizer, and learning rate.
-    model, optimizer, lr_scheduler = setup_model_and_optimizer(args, tokenizer.vocab_size, ds_config, prompt_config)
+    model, optimizer, lr_scheduler = setup_model_and_optimizer(args, tokenizer.vocab_size, ds_config, prompt_config, adapter_config)
 
     if args.do_train:
         train(args, data_config, tokenizer, model, optimizer, lr_scheduler, train_dataset, train_dataloader, dev_dataset, dev_dataloader, eval_dataset, eval_dataloader, device, random_sampler, prompt_config)

@@ -1,19 +1,15 @@
 import math
-from numpy.lib.function_base import insert
 
 import torch
 import torch.nn as nn
-import torch.nn.init as init
-import torch.nn.functional as F
+import json
 # from apex.normalization.fused_layer_norm import FusedLayerNorm as LayerNorm
 
 from .initialize import get_model_parallel_world_size
 from .layers import ColumnParallelLinear
 from .layers import RowParallelLinear
-from .mappings import gather_from_model_parallel_region
 
 import deepspeed
-import pickle
 
 from .random import checkpoint
 from .random import get_cuda_rng_tracker
@@ -23,7 +19,8 @@ from .utils import split_tensor_along_last_dim
 
 from model.configuration_enc_dec import EncDecConfig
 from .layers import VocabParallelEmbedding
-from typing import Callable, Optional, List
+from typing import Callable, Optional
+from .adapter import Adapter
 
 
 class LayerNorm(nn.Module):
@@ -493,7 +490,11 @@ class ParallelFF(nn.Module):
         output_layer_init_method: Callable = None):
         super(ParallelFF, self).__init__()
 
+        self.adapter_config = config.adapter_config
+
         self.dense_relu_dense = ParallelDenseReluDense(config, init_method, output_layer_init_method)
+        if self.adapter_config is not None:
+            self.adapter = Adapter(self.adapter_config, input_size=config.d_model)
         self.layer_norm = LayerNorm(config.d_model, eps=config.layer_norm_epsilon)
         self.dropout = nn.Dropout(config.dropout_rate)
 
@@ -501,8 +502,13 @@ class ParallelFF(nn.Module):
         # hidden_states [b, s, d_model]
         forwarded_states = self.layer_norm(hidden_states)
         forwarded_states = self.dense_relu_dense(forwarded_states)
-        hidden_states = hidden_states + self.dropout(forwarded_states)
-        return hidden_states
+        forwarded_states = self.dropout(forwarded_states)
+        new_hidden_states = hidden_states + forwarded_states
+        if self.adapter_config is not None:
+            adapter_output, down, up = self.adapter(new_hidden_states, forwarded_states)
+            new_hidden_states = hidden_states + adapter_output
+
+        return new_hidden_states
 
 
 class ParallelBlock(nn.Module):

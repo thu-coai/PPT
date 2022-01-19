@@ -1,0 +1,9 @@
+{
+    "input_size": null,
+    "add_layer_norm_before": false,
+    "add_layer_norm_after": false,
+    "residual_before_ln": true,
+    "init_bert_weights": false,
+    "non_linearity": "relu",
+    "reduction_factor": 16
+}

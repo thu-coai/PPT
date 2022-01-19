@@ -25,6 +25,7 @@ class EncDecConfig(object):
         max_position_embeddings=1024,
         do_dim_trick=False,
         output_attention=False,
+        adapter_config=None,
         **kwargs
     ):
         super().__init__()
@@ -48,6 +49,7 @@ class EncDecConfig(object):
         self.vocab_size = None
         self.do_dim_trick = do_dim_trick
         self.output_attention = output_attention
+        self.adapter_config = adapter_config
 
     @classmethod
     def from_pretrained(cls, pretrained_model_name_or_path: Union[str, os.PathLike]) -> "EncDecConfig":
