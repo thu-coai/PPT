@@ -23,34 +23,39 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 
 OPTIONS_NCCL="NCCL_DEBUG=info"
 
-MP_SIZE=1
+MP_SIZE=4
 
 DATA_EXT=".jsonl"
-DATA_PATH="/mnt/sfs_turbo/gyx/data_en/sst2"
+DATA_PATH="/mnt/sfs_turbo/gyx/data_en/sst2-full"
 
 LR=${1-0.00005}
 GRAD_ACC=${2-1}
 SEED=${3-1234}
 
-CONFIG_PATH="${WORKING_DIR}/configs/model/t5_large_config.json"
-CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-large/t5-MP1/"
+CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
+CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
 
-SAVE_PATH="${WORKING_DIR}/results/sst2/few-shot-32/at_large_fp32_fix_only_at_rdc_16/lr${LR}_G${GRAD_ACC}/seed${SEED}/"
+SAVE_PATH="${WORKING_DIR}/results/sst2/full-repro/at_fix_only_at_rdc_16/lr${LR}_G${GRAD_ACC}/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
-DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp32.json"
+DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/adapter/at.json"
 
-BATCH_SIZE=2
+BATCH_SIZE=16
+DEV_BATCH_SIZE=16
+EVAL_BATCH_SIZE=16
+
 TRAIN_ITER=-1
-EPOCHS=50
+EPOCHS=10
 
 
 OPTS=""
 OPTS+=" --model-config ${CONFIG_PATH}"
 OPTS+=" --model-parallel-size ${MP_SIZE}"
 OPTS+=" --batch-size ${BATCH_SIZE}"
+OPTS+=" --dev-batch-size ${DEV_BATCH_SIZE}"
+OPTS+=" --eval-batch-size ${EVAL_BATCH_SIZE}"
 OPTS+=" --gradient-accumulation-steps ${GRAD_ACC}"
 OPTS+=" --train-iters ${TRAIN_ITER}"
 OPTS+=" --save ${SAVE_PATH}"
@@ -67,13 +72,13 @@ OPTS+=" --weight-decay 1e-2"
 OPTS+=" --clip-grad 1.0"
 OPTS+=" --warmup 0.0"
 OPTS+=" --tokenizer-path ${TOKENIZER_PATH}"
-OPTS+=" --save-interval 6"
+OPTS+=" --save-interval 100000"
 OPTS+=" --eval-interval 6"
 OPTS+=" --eval-iters 10"
 OPTS+=" --log-interval 2"
-# OPTS+=" --checkpoint-activations"
-# OPTS+=" --deepspeed-activation-checkpointing"
-# OPTS+=" --fp16"
+OPTS+=" --checkpoint-activations"
+OPTS+=" --deepspeed-activation-checkpointing"
+OPTS+=" --fp16"
 OPTS+=" --deepspeed"
 OPTS+=" --deepspeed_config ${DS_CONFIG}"
 OPTS+=" --do-train"

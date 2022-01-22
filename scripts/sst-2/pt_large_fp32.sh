@@ -28,21 +28,22 @@ MP_SIZE=1
 DATA_EXT=".jsonl"
 DATA_PATH="/mnt/sfs_turbo/gyx/data_en/sst2"
 
-LR=${1-0.00005}
+LR=${1-0.01}
 GRAD_ACC=${2-1}
 SEED=${3-1234}
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_large_config.json"
 CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-large/t5-MP1/"
 
-SAVE_PATH="${WORKING_DIR}/results/sst2/few-shot-32/at_large_fp32_fix_only_at_rdc_16/lr${LR}_G${GRAD_ACC}/seed${SEED}/"
+SAVE_PATH="${WORKING_DIR}/results/sst2/few-shot-32/pt_large/lr${LR}_G${GRAD_ACC}/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp32.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
-PROMPT_CONFIG="${WORKING_DIR}/configs/adapter/at.json"
+PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/pt.json"
 
 BATCH_SIZE=2
+
 TRAIN_ITER=-1
 EPOCHS=50
 
@@ -67,7 +68,7 @@ OPTS+=" --weight-decay 1e-2"
 OPTS+=" --clip-grad 1.0"
 OPTS+=" --warmup 0.0"
 OPTS+=" --tokenizer-path ${TOKENIZER_PATH}"
-OPTS+=" --save-interval 6"
+OPTS+=" --save-interval 5000000"
 OPTS+=" --eval-interval 6"
 OPTS+=" --eval-iters 10"
 OPTS+=" --log-interval 2"
@@ -79,8 +80,8 @@ OPTS+=" --deepspeed_config ${DS_CONFIG}"
 OPTS+=" --do-train"
 OPTS+=" --do-valid"
 OPTS+=" --seed ${SEED}"
-OPTS+=" --adapter-tune"
-OPTS+=" --adapter-config ${PROMPT_CONFIG}"
+OPTS+=" --prompt-tune"
+OPTS+=" --prompt-config ${PROMPT_CONFIG}"
 OPTS+=" --epochs ${EPOCHS}"
 
 CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/train.py ${OPTS}"
