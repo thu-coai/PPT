@@ -657,6 +657,9 @@ class ParallelTransformer(nn.Module):
         else:
             return None
 
+    def get_prompt_weight(self):
+        return self.prompt_embeds.weight
+
     def get_input_embeds(self, input_ids):
         if self.prompt_config is None:
             return self.word_embeds(input_ids)
