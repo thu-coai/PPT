@@ -26,38 +26,36 @@ OPTIONS_NCCL="NCCL_DEBUG=info"
 MP_SIZE=4
 
 DATA_EXT=".jsonl"
-DATA_PATH="/mnt/sfs_turbo/gyx/data_en/rte/"
+DATA_PATH="/mnt/sfs_turbo/gyx/data_en/sst2-full"
 
-LR=${1-0.005}
+LR=${1-0.01}
 GRAD_ACC=${2-1}
-SEED=${3-1234}
-CKPT=${4-nss_10g_1_1_4_uni_lr0.1}
-CKPT_ITER=${5-16000}
+SEED=${3-10}
+CKPT=${4-sentiment_10g_yelp_fix_lr0.1}
+CKPT_ITER=${5-22000}
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
 CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
 PROMPT_PATH="${WORKING_DIR}/prompt_embeds/pretrain-${CKPT}-${CKPT_ITER}.pt"
 
-SAVE_PATH="${WORKING_DIR}/results/rte/few-shot-32/uni_ppt/lr${LR}_G${GRAD_ACC}/seed${SEED}/"
+SAVE_PATH="${WORKING_DIR}/results/sst2/full/ppt/lr${LR}_G${GRAD_ACC}/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/ppt.json"
 
-BATCH_SIZE=8
-DEV_BATCH_SIZE=16
-EVAL_BATCH_SIZE=16
+BATCH_SIZE=16
 TRAIN_ITER=-1
-EPOCHS=50
+EPOCHS=1
 
 
 OPTS=""
 OPTS+=" --model-config ${CONFIG_PATH}"
 OPTS+=" --model-parallel-size ${MP_SIZE}"
 OPTS+=" --batch-size ${BATCH_SIZE}"
-OPTS+=" --dev-batch-size ${DEV_BATCH_SIZE}"
-OPTS+=" --eval-batch-size ${EVAL_BATCH_SIZE}"
+OPTS+=" --dev-batch-size ${BATCH_SIZE}"
+OPTS+=" --eval-batch-size ${BATCH_SIZE}"
 OPTS+=" --gradient-accumulation-steps ${GRAD_ACC}"
 OPTS+=" --train-iters ${TRAIN_ITER}"
 OPTS+=" --save ${SAVE_PATH}"
@@ -66,7 +64,7 @@ OPTS+=" --load ${CKPT_PATH}"
 OPTS+=" --load_prompt ${PROMPT_PATH}"
 OPTS+=" --data-path ${DATA_PATH}"
 OPTS+=" --data-ext ${DATA_EXT}"
-OPTS+=" --data-name rte_uni"
+OPTS+=" --data-name sst2"
 OPTS+=" --distributed-backend nccl"
 OPTS+=" --lr ${LR}"
 OPTS+=" --no-load-optim"
@@ -76,9 +74,9 @@ OPTS+=" --clip-grad 1.0"
 OPTS+=" --warmup 0.0"
 OPTS+=" --tokenizer-path ${TOKENIZER_PATH}"
 OPTS+=" --save-interval 100000"
-OPTS+=" --eval-interval 6"
+OPTS+=" --eval-interval 100"
 OPTS+=" --eval-iters 10"
-OPTS+=" --log-interval 2"
+OPTS+=" --log-interval 20"
 OPTS+=" --checkpoint-activations"
 OPTS+=" --deepspeed-activation-checkpointing"
 OPTS+=" --fp16"

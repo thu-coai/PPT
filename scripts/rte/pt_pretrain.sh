@@ -32,7 +32,7 @@ LR=${1-0.005}
 GRAD_ACC=${2-1}
 SEED=${3-1234}
 CKPT=${4-nsp_10g_3c_en_lr0.1}
-CKPT_ITER=${5-2000}
+CKPT_ITER=${5-8000}
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
 CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"

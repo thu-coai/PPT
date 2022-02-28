@@ -31,6 +31,8 @@ class RACEDataset(EncDecDataset):
 
             if self.prompt_config:
                 prompt_len = self.prompt_config["enc"]["prompt_len"]
+                lim = 845 - len(question_ids) - len(choice_ids) - prompt_len - 10
+                context_ids = context_ids[:lim]
                 enc_input_ids = [-(i + 1) for i in range(prompt_len)] + context_ids + [117] + question_ids + [58] + choice_ids + [58] + self.tokenizer.encode("The correct one is ") + [self.tokenizer.get_sentinel_id(0)]
             else:
                 enc_input_ids = context_ids + self.tokenizer.encode("Based on the previous passage, we ask ") + question_ids + [58] + choice_ids + [58] + self.tokenizer.encode("The correct one is ") + [self.tokenizer.get_sentinel_id(0)]

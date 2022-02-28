@@ -43,7 +43,7 @@ LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
-PROMPT_CONFIG="${WORKING_DIR}/configs/ppt.json"
+PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/ppt.json"
 
 BATCH_SIZE=8
 EVAL_BATCH_SIZE=2

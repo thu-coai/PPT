@@ -46,14 +46,14 @@ BATCH_SIZE=8
 DEV_BATCH_SIZE=32
 EVAL_BATCH_SIZE=32
 TRAIN_ITER=-1
-EPOCHS=10
+EPOCHS=5
 
 
 OPTS=""
 OPTS+=" --model-config ${CONFIG_PATH}"
 OPTS+=" --model-parallel-size ${MP_SIZE}"
 OPTS+=" --batch-size ${BATCH_SIZE}"
-OPTS+=" --dev-batch-size ${EVAL_BATCH_SIZE}"
+OPTS+=" --dev-batch-size ${DEV_BATCH_SIZE}"
 OPTS+=" --eval-batch-size ${EVAL_BATCH_SIZE}"
 OPTS+=" --gradient-accumulation-steps ${GRAD_ACC}"
 OPTS+=" --train-iters ${TRAIN_ITER}"
@@ -72,7 +72,7 @@ OPTS+=" --clip-grad 1.0"
 OPTS+=" --warmup 0.0"
 OPTS+=" --tokenizer-path ${TOKENIZER_PATH}"
 OPTS+=" --save-interval 100000"
-OPTS+=" --eval-interval 100"
+OPTS+=" --eval-interval 200"
 OPTS+=" --eval-iters 10"
 OPTS+=" --log-interval 20"
 OPTS+=" --checkpoint-activations"
