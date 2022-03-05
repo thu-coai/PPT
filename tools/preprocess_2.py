@@ -26,8 +26,8 @@ class P(object):
 
 
 k = int(sys.argv[1])
-input_dir = "/data/gyx/data_en/pretrain_data_raw/"
-output_dir = "/data/gyx/data_en/pretrain_data_raw_2/"
+input_dir = "/data/gyx/ppt_data/public/English/pretrain_data_raw/"
+output_dir = "/data/gyx/ppt_data/public/English/pretrain_data_raw_2/"
 
 for x in ["20"]:
     new_output_dir = os.path.join(output_dir, x)
