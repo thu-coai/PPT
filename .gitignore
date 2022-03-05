@@ -4,4 +4,4 @@ results/
 checkpoints/
 __pycache__
 *.so
-prompt_embeds
+pretrained_prompts/
