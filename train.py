@@ -145,13 +145,16 @@ def train(args, data_config, tokenizer, model, optimizer, lr_scheduler,
             if args.eval_interval and global_step % args.eval_interval == 0 and step % args.gradient_accumulation_steps == 0 and args.do_valid:
                 prefix = "iteration {} | ".format(global_step)
                 dev_loss, dev_acc = eval_func(args, tokenizer, data_config, dev_dataset, dev_dataloader, model, device, prompt_config, mode="dev", save_res=True)
-                eval_loss, eval_acc = eval_func(args, tokenizer, data_config, eval_dataset, eval_dataloader, model, device, prompt_config, mode="test", save_res=True)
-
-                model.train()
+                
                 log_string = prefix + " dev_loss: " + str(dev_loss) + " | dev acc(mrr, f1): " + str(dev_acc) 
-                log_string = log_string + " | eval_loss: " + str(eval_loss) + " | eval acc(mrr, f1): " + str(eval_acc)
+                if args.do_eval_while_valid:
+                    eval_loss, eval_acc = eval_func(args, tokenizer, data_config, eval_dataset, eval_dataloader, model, device, prompt_config, mode="test", save_res=True)
+                    log_string = log_string + " | eval_loss: " + str(eval_loss) + " | eval acc(mrr, f1): " + str(eval_acc)
+
                 print_rank_0(log_string)
                 save_rank_0(args, log_string)
+                
+                model.train()
 
                 if args.max_save > 0:
                     i = 0
@@ -432,8 +435,9 @@ def main():
 
     if args.do_train:
         train_dataloader, train_dataset, random_sampler = load_data(args, data_config, "train", tokenizer, prompt_config, ratio=args.train_ratio, num=args.train_num)
-        dev_dataloader, dev_dataset, _  = load_data(args, data_config, "dev32", tokenizer, prompt_config, ratio=args.dev_ratio, num=args.dev_num)
-        eval_dataloader, eval_dataset, _ = load_data(args, data_config, "valid", tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
+        dev_dataloader, dev_dataset, _  = load_data(args, data_config, "valid", tokenizer, prompt_config, ratio=args.dev_ratio, num=args.dev_num)
+        if args.do_eval_while_valid:
+            eval_dataloader, eval_dataset, _ = load_data(args, data_config, "test", tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
         if args.train_iters == -1:
             args.train_iters = len(train_dataset) * args.epochs // (mpu.get_data_parallel_world_size() * args.batch_size * args.gradient_accumulation_steps)
     else:
@@ -450,7 +454,7 @@ def main():
         train(args, data_config, tokenizer, model, optimizer, lr_scheduler, train_dataset, train_dataloader, dev_dataset, dev_dataloader, eval_dataset, eval_dataloader, device, random_sampler, prompt_config)
 
     if args.do_eval:
-        eval_dataloader, eval_dataset, _ = load_data(args, data_config, "valid", tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
+        eval_dataloader, eval_dataset, _ = load_data(args, data_config, "test", tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
         eval_func = data_config[args.data_name]["eval_func"]
 
         loss, acc = eval_func(args, tokenizer, data_config, eval_dataset, eval_dataloader, model, device, prompt_config, mode="test")

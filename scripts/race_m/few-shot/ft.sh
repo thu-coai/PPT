@@ -58,6 +58,7 @@ OPTS+=" --deepspeed"
 OPTS+=" --deepspeed_config ${DS_CONFIG}"
 OPTS+=" --do-train"
 OPTS+=" --do-valid"
+OPTS+=" --do-eval-while-valid"
 OPTS+=" --seed ${SEED}"
 OPTS+=" --epochs ${EPOCHS}"
 

@@ -63,6 +63,8 @@ def add_training_args(parser: argparse.ArgumentParser):
                        help="whether do validation")
     group.add_argument("--do-eval", action="store_true",
                        help="whether do testing")
+    group.add_argument("--do-eval-while-valid", action="store_true",
+                       help="whether do testing")
     group.add_argument("--do-infer", action="store_true",
                        help="whether do inference (testing without labels)")
     group.add_argument("--train-ratio",type=float, default=1.0,
