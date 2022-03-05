@@ -5,3 +5,6 @@ checkpoints/
 __pycache__
 *.so
 pretrained_prompts/
+pretrain_data
+downstream_data
+checkpoints

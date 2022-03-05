@@ -1,207 +1,126 @@
-# CPM-Finetune
+# PPT
 
-本仓库为CPM模型的 fine-tune 代码仓库，可以用于模型 fine-tune 的多机多卡训练/测试。目前支持了 ChID 中文成语填空数据集和 STC 中文对话数据集。[[项目首页](https://cpm.baai.ac.cn)] [[模型下载](https://cpm.baai.ac.cn/download.html)] [[技术报告](https://arxiv.org/abs/2012.00413)]
-
-同时，该仓库也提供了 ChID 数据集 zero-shot setting 下测试代码。
-
-ChID 数据集来源于论文 [ChID: A Large-scale Chinese IDiom Dataset for Cloze Test](https://www.aclweb.org/anthology/P19-1075/). 
-
-STC 数据集来源于论文 [Neural Responding Machine for Short-Text Conversation](https://www.aclweb.org/anthology/P15-1152/).
-
-两个数据集可从[这里](https://drive.google.com/drive/folders/1gL01xbFBcrgP0TmgOhJ_uplkeG-BCwvM)下载。
+Code and datasets for our paper "PPT: Pre-trained Prompt Tuning for Few-shot Learning"
 
 
-## 1 安装
 
-首先安装 pytorch 等基础依赖，再安装[APEX](https://github.com/NVIDIA/apex#quick-start)以支持 fp16，然后安装 deepspeed：
+## 1 Environment
 
-**安装基础依赖：**
+The code requires the CUDA10.2 toolkit. 
 
-```[bash]
+##### Install basic dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-**安装 apex：**
+##### Install apex
 
-```[bash]
+```bash
 git clone https://github.com/NVIDIA/apex
 cd apex
-pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+```
+##### Install DeepSpeed
+
+The version we used is `v0.3.9`, It can be installed from its [repo](https://github.com/microsoft/DeepSpeed/releases/tag/v0.3.9) or 
+```bash
+pip install deepspeed==0.3.9
+```
+Since there exist some **bugs** in DeepSpeed, you need to make some little modifications to this package. You can refer to this [issue](https://github.com/TsinghuaAI/CPM-2-Finetune/issues/11) for more information. Specifically, you need to modify two lines of code in `${PATH_TO_PYTHON_SITE_PACKAGE}/deepspeed/runtime/zero/stage1.py` and `${PATH_TO_PYTHON_SITE_PACKAGE}/deepspeed/runtime/engine.py`. We provide the modified `src/ds_fix/stage1.py` and `src/ds_fix/engine.py` in our repo. You can simply replace `${PATH_TO_PYTHON_SITE_PACKAGE}/deepspeed/runtime/zero/stage1.py` with `stage1.py` and `${PATH_TO_PYTHON_SITE_PACKAGE}/deepspeed/runtime/engine.py` with `engine.py` that we provided. 
+
+
+
+## 2 Datasets
+
+## 2.1 Downstream Datasets
+
+The original datasets is obtained from [huggingface](https://huggingface.co/datasets).
+
+The preprocessed datasets can be obtained from this link. If you do tuning (FT, PT, or PPT), you need to put the preprocessed data in `downstream_data/`.
+
+## 2.2 Pre-training Data
+
+Our pre-training data is sampled from [openwebtext](https://huggingface.co/datasets/openwebtext/tree/main). If you would like to preprocess the data from scratch, please put the `openwebtext.txt` in  `pretrain_data/raw/`. Run the following preprocessing scripts to construct the pre-training data:
+
+```bash
+bash scripts/tools/preprocess_pretrain_nsp.sh # Next Sentence Prediction
+bash scripts/tools/preprocess_pretrain_nss.sh # Next Sentence Selection
+bash scripts/tools/preprocess_pretrain_cls.sh # Single Sentence Classification
+bash scripts/tools/preprocess_pretrain_nss_uni.sh # Unified Next Sentence Selection (for Unified PPT)
 ```
 
-考虑apex的安装容易发生问题，我们构建了对应的Docker容器，可以进行快速环境搭建。安装方式如下：
+For reproductivity, we also provided the preprocessed pre-training data in this link. You can directly move the preprocessed pre-training data to `pretrain_data/preprocessed/`.
 
-```[bash]
-docker pull dmye/cpm:v0
+
+
+## 3 Pre-trained Checkpoints
+
+## 3.1 Base Model
+
+The original base model is obtained from [huggingface](https://huggingface.co/models). Before runing the code, please use the transforming scripts to transfer the original `pytorch_model.bin` model checkpoints to fit in our `deepspeed + megatron` framework:
+
+```bash
+mkdir -p checkpoints/t5-xxl/t5-MP4
+
+python3 tools/transform.py \
+--hf_path ${PATH_TO_PYTORCH_MODLE_BIN}
+--save_path "./checkpoints/t5-xxl/t5-MP4"
 ```
 
-参考运行指令如下：
+## 3.2 Prompts
 
-```[bash]
-sudo docker run --gpus '"device=0,1"' -it -v <path>:/CPM  --name=cpm  cpm:v0
+The pretrained prompts can be obtained from this link. You need to move the pre-tained prompts to `pretrained_prompts/`.
+
+
+
+## 4 Run the code
+
+All scripts are in the directory `scripts`.
+
+Before running the code, please first change the `WORKING_DIR` to the current directory of this repo. If you are runing multiple scripts on a single node, you need to make sure that the `MASTER_PORT` of each script is different. 
+
+If the checkpoint is successfully loaded, the log printed to the stdout should contain messages like `successfully loaded /path-to-checkpoint/t5-MP4/mp_rank_01_model_states.pt`. Otherwise, `WARNING: could not find the metadata file /***/latest_checkpointed_iteration.txt will not load any checkpoints and will start from random` will display. Note that when you successfully load the model, you will see messages like `The following zero checkpoints paths are missing: ['/path-to-checkpoint/eva/200000/zero_pp_rank_0_mp_rank_00_optim_states.pt',...` which mean optimizer states are not loaded. This **DOES NOT** affect the use of model inference and you can just ignore it.
+
+### 4.1 Tuning
+
+We use the boolq dataset as an example. For t5-xxl model, PT and PPT can run on at least  4 * 32G V100 GPU. FT can run on at least 16 * 32G V100 GPU.
+
+```bash
+# few-shot 32 samples
+bash scripts/boolq/few-shot/ft.sh # Fine-tuning (FT)
+bash scripts/boolq/few-shot/pt.sh # Prompt Tuning (PT)
+bash scripts/boolq/few-shot/pt_pretrain.sh # Pre-trained Prompt Tuning (PPT)
+bash scripts/boolq/few-shot/pt_uni_pretrain.sh # Unified Pre-trained Prompt Tuning (Unified PPT)
+
+# full data
+bash scripts/boolq/full/ft.sh # Fine-tuning (FT)
+bash scripts/boolq/full/pt.sh # Prompt Tuning (PT)
+bash scripts/boolq/full/pt_pretrain.sh # Pre-trained Prompt Tuning (PPT)
+bash scripts/boolq/full/pt_uni_pretrain.sh # Unified Pre-trained Prompt Tuning (Unified PPT)
 ```
 
-其中`<path>`为代码所在目录，-v进行文件目录挂载
+### 4.2 Pre-training
 
-**安装 deepspeed**
-
-我们使用了以下版本的 deepspeed：
-<https://github.com/microsoft/DeepSpeed/tree/f0f2a7026877d3fd2f6f5565a67cdffc89750cf0>
-可根据其提供的文档进行安装。
-
-
-## 2 Fine-Tune
-
-### 2.1 数据预处理
-
-### 2.1.1 ChiD
-```[bash]
-python3 preprocess_chid_finetune.py --data_dir ${PATH_TO_DATA_DIR} --tokenizer_path ${PATH_TO_TOKENIZER} --output_dir ${PATH_TO_OUTPUT}
+```bash
+bash scripts/pretrain/pretrain_nsp.sh # Next Sentence Prediction
+bash scripts/pretrain/pretrain_nss.sh # Next Sentence Selelction
+bash scripts/pretrain/pretrain_cls.sh # Single Sentence Classificatin
+bash scripts/pretrain/pretrain_nss_uni.sh # Unified Next Sentence Selelction (for Unified PPT)
 ```
 
-其中，模板定义与实现在 preprocess_chid_finetune.py 文件 `process_one_sent` 函数中。最终，该文件生成的数据格式为：
-
-```[python]
-[
-    {
-        "sent": [8, 15, ....], # 经过 bpe 分词之后 token 对应的 id
-        "truth": 3 # 正确答案成语的编号（0~9之间的整数）
-    }
-    ...
-]
-```
-
-预处理完成后，指定的输出目录下会生成 train.json, valid.json, test.json 三个文件。
-
-### 2.1.2 STC
-
-```[bash]
-python3 preprocess_stc_finetune.py --data_dir ${PATH_TO_DATA_DIR} --output_dir ${PATH_TO_OUTPUT}
-```
-
-该文件会将每段对话写成一行，上文前加入“对话上文:”，下文前加入“回复:”：
-```
-对话上文:二十六年前的我挺瘦吧？不知这几位盲童现在好吗？ 回复:恩，不但瘦，头发还很多。
-```
-
-注意：由于 STC 数据集很大，我们在数据预处理的时候切了其训练集的前 10% 以方便使用者测试 Fine-tune。
-
-### 2.2 Fine-Tune 训练/测试
-
-进行 fine-tune 训练的时候可以选择 fp16 或者 fp32。我们在实验中发现，在使用 fp16 进行训练的时候，需要加载预训练时的动量才能使模型较快收敛，而采用 fp32 训练则不会有这个问题。因此，我们推荐直接使用 fp32 进行 fine-tune 训练。
-
-另外，关于内存使用，我们使用了 deepspeed 的 activation checkpointing 以节省内存，相关选项已经在运行脚本中修改。
-
-#### ChID:
-
-```[bash]
-bash scripts/chid/finetune_chid_large.sh # for fp16 fine-tune
-bash scripts/chid/finetune_chid_large_fp32.sh # for fp32 fine-tune
-bash scripts/chid/finetune_chid_large_fp32_multinode.sh # for multi-node fp32 fine-tune
-```
-
-#### STC:
-```[bash]
-bash scripts/language_model/finetune_lm_large.sh # for fp16 fine-tune
-bash scripts/language_model/finetune_lm_large_fp32.sh # for fp32 fine-tune
-bash scripts/language_model/finetune_lm_large_fp32_multinode.sh # for multi-node fp32 fine-tune
-```
-
-运行脚本之前，需要先将脚本中以下变量更改为实际的路径：
-
-```[bash]
-DATA_DIR # 预处理后数据的目录
-CHECKPOINT_PATH # 预训练结束后模型的路径
-RESULTS_DIR # 训练结果的存放处
-MODEL_NAME # 给模型起的名字
-TOKENIZER_PATH # tokenizer 的路径
-```
-
-如果要进行多机训练，可能还需要修改
-```[bash]
-NUM_WORKERS # 节点数量
-NUM_GPUS_PER_WORKER # 每个节点的卡数
-```
-以及 `scripts/host_files/hostfile` 文件。具体格式可以参考 deepspeed 的[官方文档](https://www.deepspeed.ai/getting-started/)
-
-进行测试之前，需要去掉脚本中 `--do-train` 选项，然后可以使用 `--eval_ckpt_path` 选项来指定需要测试的模型。
 
 
-## 3 Zero-Shot
+## 5 Cite
 
-### 3.1 数据预处理
+If you use the code, please cite the following paper:
 
-```[bash]
-python3 preprocess_chid_zeroshot.py --data_dir ${PATH_TO_DATA_DIR} --tokenizer_path ${PATH_TO_TOKENIZER} --output_dir ${PATH_TO_OUTPUT}
-```
-
-该文件会将每个候选的成语填入文章相应的空白中，每个空白生成10个新的候选文章。最终，该文件生成的数据格式为：
-
-```[python]
-
-{
-    "contents": [
-        [8, 15, ....],
-        ....
-    ], # 所有样本经过 bpe 分词之后 token 对应的 id。
-    "sids": [
-        0,
-        0,
-        ...
-        1,
-        1,
-        ...
-    ], # 每个生成出的候选文章对应原来样本的编号
-    "cids": [
-        0,
-        1,
-        2,
-        ...
-        9,
-        0,
-        1,
-        ...
-    ], # 每个生成出的候选文章对应的成语的编号
-    "labels": [
-        3,
-        2,
-        ...
-    ], # 每个原样本的正确答案编号（0~9之间的整数）
+```latex
+@inproceedings{gu2022ppt,
+  title={PPT: Pre-trained Prompt Tuning for Few-shot Learning},
+  author={Gu, Yuxian and Han, Xu and Liu, Zhiyuan and Huang, Minlie},
+  booktitle={Proceedings of ACL},
+  year={2022}
 }
 ```
 
-与处理完成后，指定的输出目录下会生成 test.json 文件。
-
-### 3.2 Zero-Shot 测试
-
-```[bash]
-bash scripts/chid/zero-shot_chid_large.sh
-```
-
-运行脚本之前，需要先将脚本中以下变量更改为实际的路径：
-
-```[bash]
-DATA_DIR # 预处理后数据的目录
-CHECKPOINT_PATH # 预训练结束后模型的路径
-RESULTS_DIR # 训练结果的存放处
-MODEL_NAME # 给模型起的名字
-TOKENIZER_PATH # tokenizer 的路径
-```
-
-## 4 参考性能
-
-|            | Fine-Tune | Zero-Shot |
-| ---------- | --------- | --------- |
-| CPM-small  | 0.657     | 0.433     |
-| CPM-medium | 0.695     | 0.524     |
-| CPM-large  | **0.804** | **0.685** |
-
-## 5 引用
-
-```[latex]
-@article{cpm-v1,
-  title={CPM: A Large-scale Generative Chinese Pre-trained Language Model},
-  author={Zhang, Zhengyan and Han, Xu, and Zhou, Hao, and Ke, Pei, and Gu, Yuxian and Ye, Deming and Qin, Yujia and Su, Yusheng and Ji, Haozhe and Guan, Jian and Qi, Fanchao and Wang, Xiaozhi and Zheng, Yanan and Zeng, Guoyang and Cao, Huanqi and Chen, Shengqi and Li, Daixuan and Sun, Zhenbo and Liu, Zhiyuan and Huang, Minlie and Han, Wentao and Tang, Jie and Li, Juanzi and Sun, Maosong},
-  year={2020}
-}
-```

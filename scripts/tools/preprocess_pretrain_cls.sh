@@ -1,7 +1,5 @@
 WOKRING_DIR=/home/guyuxian/PPT-origin/
 
-OUTPUT_PATH=""
-
 
 OPTS=""
 OPTS+=" --input ${WOKRING_DIR}/pretrain_data/raw/openwebtext.txt"
