@@ -4,10 +4,10 @@ WORKING_DIR=/home/guyuxian/PPT-origin
 
 MP_SIZE=4
 
-NUM_GPUS_PER_WORKER=4 # number of gpus used on one node
+NUM_GPUS_PER_WORKER=8 # number of gpus used on one node
 
 DATA_EXT=".jsonl"
-DATA_PATH="/data/gyx/ppt_data/public/English/race_m-full"
+DATA_PATH="${WORKING_DIR}/downstream_data/English/race_m-full"
 
 MASTER_PORT=${1-1234}
 LR=${2-0.01}
@@ -17,7 +17,7 @@ CKPT=${4-nss_10g_1_1_4_uni_lr0.1}
 CKPT_ITER=${5-16000}
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
-CKPT_PATH="/data/gyx/checkpoints/t5-xxl/t5-MP4"
+CKPT_PATH="${WORKING_DIR}/checkpoints/t5-xxl/t5-MP4"
 PROMPT_PATH="${WORKING_DIR}/pretrained_prompts/pretrain-${CKPT}-${CKPT_ITER}.pt"
 
 SAVE_PATH="${WORKING_DIR}/results/race_m/full/uni_ppt/lr${LR}_G${GRAD_ACC}/seed${SEED}/"

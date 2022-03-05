@@ -33,13 +33,13 @@ Since there exist some **bugs** in DeepSpeed, you need to make some little modif
 
 ## 2 Datasets
 
-## 2.1 Downstream Datasets
+### 2.1 Downstream Datasets
 
 The original datasets is obtained from [huggingface](https://huggingface.co/datasets).
 
 The preprocessed datasets can be obtained from this link. If you do tuning (FT, PT, or PPT), you need to put the preprocessed data in `downstream_data/`.
 
-## 2.2 Pre-training Data
+### 2.2 Pre-training Data
 
 Our pre-training data is sampled from [openwebtext](https://huggingface.co/datasets/openwebtext/tree/main). If you would like to preprocess the data from scratch, please put the `openwebtext.txt` in  `pretrain_data/raw/`. Run the following preprocessing scripts to construct the pre-training data:
 
@@ -56,7 +56,7 @@ For reproductivity, we also provided the preprocessed pre-training data in this 
 
 ## 3 Pre-trained Checkpoints
 
-## 3.1 Base Model
+### 3.1 Base Model
 
 The original base model is obtained from [huggingface](https://huggingface.co/models). Before runing the code, please use the transforming scripts to transfer the original `pytorch_model.bin` model checkpoints to fit in our `deepspeed + megatron` framework:
 
@@ -68,7 +68,7 @@ python3 tools/transform.py \
 --save_path "./checkpoints/t5-xxl/t5-MP4"
 ```
 
-## 3.2 Prompts
+### 3.2 Prompts
 
 The pretrained prompts can be obtained from this link. You need to move the pre-tained prompts to `pretrained_prompts/`.
 

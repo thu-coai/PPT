@@ -4,10 +4,10 @@ WORKING_DIR=/home/guyuxian/PPT-origin
 
 MP_SIZE=4
 
-NUM_GPUS_PER_WORKER=4 # number of gpus used on one node
+NUM_GPUS_PER_WORKER=8 # number of gpus used on one node
 
 DATA_EXT=".jsonl"
-DATA_PATH="/data/gyx/ppt_data/public/English/sst2-full/"
+DATA_PATH="${WORKING_DIR}/downstream_data/English/sst2-full/"
 
 MASTER_PORT=${1-1234}
 LR=${2-0.000005}
@@ -15,7 +15,7 @@ GRAD_ACC=${3-1}
 SEED=${4-10}
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
-CKPT_PATH="/data/gyx/checkpoints/t5-xxl/t5-MP4"
+CKPT_PATH="${WORKING_DIR}/checkpoints/t5-xxl/t5-MP4"
 
 SAVE_PATH="${WORKING_DIR}/results/sst2/full/ft/lr${LR}_G${GRAD_ACC}/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"

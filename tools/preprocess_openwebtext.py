@@ -49,8 +49,8 @@ class P(object):
 
 
 k = int(sys.argv[1])
-input_dir = "/data/gyx/ppt_data/public/English/openwebtext/"
-output_dir = "/data/gyx/ppt_data/public/English/pretrain_data_raw_3/"
+input_dir = "English/openwebtext/"
+output_dir = "English/pretrain_data_raw_3/"
 
 
 for x in ["20"]:

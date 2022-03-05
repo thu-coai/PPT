@@ -4,12 +4,12 @@ WORKING_DIR=/home/guyuxian/PPT-origin
 
 MP_SIZE=4
 
-NUM_GPUS_PER_WORKER=4 # number of gpus used on one node
+NUM_GPUS_PER_WORKER=8 # number of gpus used on one node
 
 DATA_PATH="${WORKING_DIR}/pretrain_data/preprocessed/nss_uni_document"
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
-CKPT_PATH="/data/gyx/checkpoints/t5-xxl/t5-MP4"
+CKPT_PATH="${WORKING_DIR}/checkpoints/t5-xxl/t5-MP4"
 
 DS_CONFIG="${WORKING_DIR}/src/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_en"

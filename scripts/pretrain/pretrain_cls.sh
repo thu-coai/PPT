@@ -4,12 +4,12 @@ WORKING_DIR=/home/guyuxian/PPT-origin
 
 MP_SIZE=4
 
-NUM_GPUS_PER_WORKER=4 # number of gpus used on one node
+NUM_GPUS_PER_WORKER=8 # number of gpus used on one node
 
 DATA_PATH="${WORKING_DIR}/pretrain_data/preprocessed/cls"
 
-CONFIG_PATH="${WORKING_DIR}/src/configs/model/enc_dec_xlarge_config.json"
-CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
+CONFIG_PATH="${WORKING_DIR}/src/configs/model/t5_xxl_config.json"
+CKPT_PATH="${WORKING_DIR}/checkpoints/t5-xxl/t5-MP4"
 
 DS_CONFIG="${WORKING_DIR}/src/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
@@ -63,7 +63,7 @@ OPTS+=" --prompt-config ${PROMPT_CONFIG}"
 OPTS+=" --pretrain-task cls"
 OPTS+=" --save-prompt-only"
 
-CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/src/pretrain_enc_dec.py ${OPTS}"
+CMD="torchrun --master_port ${MASTER_PORT} --nproc_per_node ${NUM_GPUS_PER_WORKER} ${WORKING_DIR}/pretrain.py ${OPTS}"
 
 echo ${CMD}
 mkdir -p ${SAVE_PATH}
