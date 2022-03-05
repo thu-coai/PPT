@@ -166,22 +166,6 @@ def add_prompt_args(parser: argparse.ArgumentParser):
     return parser
 
 
-def add_adapter_args(parser: argparse.ArgumentParser):
-    group = parser.add_argument_group("adapter", "adapter configurations")
-
-    group.add_argument("--load_adapter", type=str, default=None,
-                       help="the path to load adapter from")
-    group.add_argument("--adapter-tune", action="store_true",
-                       help="whether to do adapter tuning")
-    group.add_argument("--adapter-config", type=str, default=None,
-                       help="the path of the adapter configuration")
-    group.add_argument("--save-adapter-only", action="store_true",
-                       help="whether to save the adapter only. If true, only prompts will be saved otherwise, "
-                       "the whole model together with the adapter will be saved.")
-
-    return parser
-
-
 def add_evaluation_args(parser: argparse.ArgumentParser):
     """Evaluation arguments."""
 
@@ -233,7 +217,6 @@ def get_args():
     parser = add_evaluation_args(parser)
     parser = add_data_args(parser)
     parser = add_prompt_args(parser)
-    parser = add_adapter_args(parser)
 
     # Include DeepSpeed configuration arguments
     parser = deepspeed.add_config_arguments(parser)
@@ -247,19 +230,7 @@ def get_args():
 
     args.rank = int(os.getenv("RANK", "0"))
     args.world_size = int(os.getenv("WORLD_SIZE", "1"))
-
-    if os.getenv("OMPI_COMM_WORLD_LOCAL_RANK"):
-        # We are using (OpenMPI) mpirun for launching distributed data parallel processes
-        local_rank = int(os.getenv("OMPI_COMM_WORLD_LOCAL_RANK"))
-        local_size = int(os.getenv("OMPI_COMM_WORLD_LOCAL_SIZE"))
-
-        # Possibly running with Slurm
-        num_nodes = int(os.getenv("SLURM_JOB_NUM_NODES", "1"))
-        nodeid = int(os.getenv("SLURM_NODEID", "0"))
-
-        args.local_rank = local_rank
-        args.rank = nodeid*local_size + local_rank
-        args.world_size = num_nodes*local_size
+    args.local_rank = int(os.getenv("LOCAL_RANK", "0"))
 
     args.model_parallel_size = min(args.model_parallel_size, args.world_size)
     if args.rank == 0:

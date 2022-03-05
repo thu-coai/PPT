@@ -19,7 +19,6 @@ from model import EncDecModel, EncDecConfig
 from model import (
     enc_dec_get_params_for_weight_decay_optimization,
     enc_dec_get_params_for_prompt_optimization,
-    enc_dec_get_params_for_adapter_optimization
 )
 
 from model import DistributedDataParallel as DDP
@@ -53,12 +52,11 @@ def save_rank_0(args, message):
             f.flush()
 
 
-def get_model(args, vocab_size, prompt_config=None, adapter_config=None):
+def get_model(args, vocab_size, prompt_config=None):
     """Build the model."""
 
     print_rank_0('building Enc-Dec model ...')
     config = EncDecConfig.from_json_file(args.model_config)
-    config.adapter_config = adapter_config
     config.vocab_size = vocab_size
     model = EncDecModel(config,
                         parallel_output=True,
@@ -98,8 +96,6 @@ def get_optimizer(model, args, prompt_config=None):
         model = model.module
     if args.prompt_tune and prompt_config["fix_model"]:
         param_groups = enc_dec_get_params_for_prompt_optimization(model)
-    elif args.adapter_tune:
-        param_groups = enc_dec_get_params_for_adapter_optimization(model)
     else:
         param_groups = enc_dec_get_params_for_weight_decay_optimization(model)
     
@@ -168,10 +164,10 @@ def get_learning_rate_scheduler(optimizer, args):
     return lr_scheduler
 
 
-def setup_model_and_optimizer(args, vocab_size, ds_config, prompt_config=None, adapter_config=None):
+def setup_model_and_optimizer(args, vocab_size, ds_config, prompt_config=None):
     """Setup model and optimizer."""
 
-    model = get_model(args, vocab_size, prompt_config, adapter_config)
+    model = get_model(args, vocab_size, prompt_config)
     optimizer = get_optimizer(model, args, prompt_config)
     lr_scheduler = get_learning_rate_scheduler(optimizer, args)
 
