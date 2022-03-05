@@ -30,7 +30,7 @@ DATA_PATH="/mnt/sfs_turbo/gyx/data_en/rte-full/"
 
 LR=${1-0.00001}
 GRAD_ACC=${2-1}
-SEED=${3-1234}
+SEED=${3-10}
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
 CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
@@ -40,19 +40,18 @@ LOG_FILE="${SAVE_PATH}/log.txt"
 DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
-BATCH_SIZE=8
-DEV_BATCH_SIZE=16
-EVAL_BATCH_SIZE=16
-
+BATCH_SIZE=4
+DEV_BATCH_SIZE=8
+EVAL_BATCH_SIZE=8
 TRAIN_ITER=-1
-EPOCHS=20
+EPOCHS=10
 
 
 OPTS=""
 OPTS+=" --model-config ${CONFIG_PATH}"
 OPTS+=" --model-parallel-size ${MP_SIZE}"
 OPTS+=" --batch-size ${BATCH_SIZE}"
-OPTS+=" --dev-batch-size ${EVAL_BATCH_SIZE}"
+OPTS+=" --dev-batch-size ${DEV_BATCH_SIZE}"
 OPTS+=" --eval-batch-size ${EVAL_BATCH_SIZE}"
 OPTS+=" --gradient-accumulation-steps ${GRAD_ACC}"
 OPTS+=" --train-iters ${TRAIN_ITER}"
