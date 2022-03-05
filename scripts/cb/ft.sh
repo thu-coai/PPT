@@ -1,6 +1,6 @@
 #! /bin/bash
 
-WORKING_DIR=/mnt/sfs_turbo/gyx/PPT
+WORKING_DIR=/home/guyuxian/PPT-origin
 
 if [[ $DLS_TASK_NUMBER == 1 ]]; then
     MASTER_ADDR=localhost
@@ -21,19 +21,19 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
                   --master_addr $MASTER_ADDR \
                   --master_port $MASTER_PORT"
 
-OPTIONS_NCCL="NCCL_DEBUG=info"
+
 
 MP_SIZE=4
 
 DATA_EXT=".jsonl"
-DATA_PATH="/mnt/sfs_turbo/gyx/data_en/cb/"
+DATA_PATH="/data/gyx/data_en/cb/"
 
 LR=${1-0.000005}
 GRAD_ACC=${2-1}
 SEED=${3-1234}
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
-CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
+CKPT_PATH="/data/gyx/checkpoints/t5-xxl/t5-MP4"
 
 SAVE_PATH="${WORKING_DIR}/results/cb/few-shot-32/ft/lr${LR}_G${GRAD_ACC}/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"

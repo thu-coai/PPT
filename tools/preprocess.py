@@ -49,8 +49,8 @@ class P(object):
 
 
 k = int(sys.argv[1])
-input_dir = "/mnt/sfs_turbo/gyx/data_en/openwebtext/"
-output_dir = "/mnt/sfs_turbo/gyx/data_en/pretrain_data_raw_3/"
+input_dir = "/data/gyx/data_en/openwebtext/"
+output_dir = "/data/gyx/data_en/pretrain_data_raw_3/"
 
 
 for x in ["20"]:

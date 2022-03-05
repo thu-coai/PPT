@@ -1,39 +1,20 @@
 #! /bin/bash
 
-WORKING_DIR=/mnt/sfs_turbo/gyx/PPT
-
-if [[ $DLS_TASK_NUMBER == 1 ]]; then
-    MASTER_ADDR=localhost
-    MASTER_PORT=6000
-    NNODES=1
-    NODE_RANK=0
-else
-    MASTER_HOST="$BATCH_CUSTOM0_HOSTS"
-    MASTER_ADDR="${MASTER_HOST%%:*}"
-    MASTER_PORT="${MASTER_HOST##*:}"
-    NNODES="$DLS_TASK_NUMBER"
-    NODE_RANK="$DLS_TASK_INDEX"
-fi
-
-GPUS_PER_NODE=8
-DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
-                  --nnodes $NNODES --node_rank $NODE_RANK \
-                  --master_addr $MASTER_ADDR \
-                  --master_port $MASTER_PORT"
-
-OPTIONS_NCCL="NCCL_DEBUG=info"
+WORKING_DIR=/home/guyuxian/PPT-origin
 
 MP_SIZE=4
 
+NUM_GPUS_PER_WORKER=4 # number of gpus used on one node
+
 DATA_EXT=".jsonl"
-DATA_PATH="/mnt/sfs_turbo/gyx/data_en/cb-full/"
+DATA_PATH="/data/gyx/data_en/cb-full/"
 
 SEED=${3-10}
 CKPT=${4-nsp_10g_3c_en_lr0.1}
 CKPT_ITER=${5-8000}
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
-CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
+CKPT_PATH="/data/gyx/checkpoints/t5-xxl/t5-MP4"
 PROMPT_PATH="${WORKING_DIR}/prompt_embeds/pretrain-${CKPT}-${CKPT_ITER}.pt"
 
 SAVE_PATH="${WORKING_DIR}/results/cb/zs/ppt/seed${SEED}/"
@@ -73,7 +54,7 @@ OPTS+=" --seed ${SEED}"
 OPTS+=" --prompt-tune"
 OPTS+=" --prompt-config ${PROMPT_CONFIG}"
 
-CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/train.py ${OPTS}"
+CMD="torchrun --master_port ${MASTER_PORT} --nproc_per_node ${NUM_GPUS_PER_WORKER} ${WORKING_DIR}/train.py ${OPTS}"
 
 echo ${CMD}
 mkdir -p ${SAVE_PATH}

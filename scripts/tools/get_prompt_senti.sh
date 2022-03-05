@@ -1,4 +1,4 @@
-WORKING_DIR=/mnt/sfs_turbo/gyx/PPT
+WORKING_DIR=/home/guyuxian/PPT-origin
 
 CKPT="sentiment_10g_yelp_fix_lr0.1"
 CKPT_ITER=22000

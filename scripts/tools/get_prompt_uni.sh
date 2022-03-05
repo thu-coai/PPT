@@ -1,4 +1,4 @@
-WORKING_DIR=/mnt/sfs_turbo/gyx/PPT
+WORKING_DIR=/home/guyuxian/PPT-origin
 
 CKPT="nss_10g_1_1_4_uni_lr0.1"
 CKPT_ITER=16000
