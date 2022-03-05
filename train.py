@@ -81,14 +81,12 @@ def backward_step(args, loss, model, optimizer):
                 optimizer.clip_master_grads(args.clip_grad)
 
 
-def train(args, data_config, tokenizer, model, optimizer, lr_scheduler,
+def train(args, tokenizer, model, optimizer, lr_scheduler,
           train_dataset, train_dataloader, dev_dataset, dev_dataloader, eval_dataset, eval_dataloader, device, random_sampler: RandomSampler, prompt_config):
     """Train the model."""
 
     if torch.distributed.get_rank() == 0:
         print("Train the model")
-
-    eval_func = data_config[args.data_name]["eval_func"]
 
     # Turn on training mode which enables dropout.
     model.train()
@@ -144,11 +142,11 @@ def train(args, data_config, tokenizer, model, optimizer, lr_scheduler,
             # Evaluation
             if args.eval_interval and global_step % args.eval_interval == 0 and step % args.gradient_accumulation_steps == 0 and args.do_valid:
                 prefix = "iteration {} | ".format(global_step)
-                dev_loss, dev_acc = eval_func(args, tokenizer, data_config, dev_dataset, dev_dataloader, model, device, prompt_config, mode="dev", save_res=True)
+                dev_loss, dev_acc = evaluate(args, tokenizer, dev_dataset, dev_dataloader, model, device, prompt_config, mode="dev", save_res=True)
                 
                 log_string = prefix + " dev_loss: " + str(dev_loss) + " | dev acc(mrr, f1): " + str(dev_acc) 
                 if args.do_eval_while_valid:
-                    eval_loss, eval_acc = eval_func(args, tokenizer, data_config, eval_dataset, eval_dataloader, model, device, prompt_config, mode="test", save_res=True)
+                    eval_loss, eval_acc = evaluate(args, tokenizer, eval_dataset, eval_dataloader, model, device, prompt_config, mode="test", save_res=True)
                     log_string = log_string + " | eval_loss: " + str(eval_loss) + " | eval acc(mrr, f1): " + str(eval_acc)
 
                 print_rank_0(log_string)
@@ -178,7 +176,7 @@ def train(args, data_config, tokenizer, model, optimizer, lr_scheduler,
     return global_step
 
 
-def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: EncDecDataset, eval_data_loader, model, device, prompt_config, mode="dev", save_res=False):
+def evaluate(args, tokenizer: EncDecTokenizer, eval_dataset: EncDecDataset, eval_data_loader, model, device, prompt_config, mode="dev", save_res=False):
     """Evaluation."""
 
     # Turn on evaluation mode which disables dropout.
@@ -229,8 +227,12 @@ def evaluate(args, tokenizer: EncDecTokenizer, data_config, eval_dataset: EncDec
     all_preds = torch.cat(all_preds, dim=0).cpu().tolist()
     all_labels = torch.cat(all_labels, dim=0).cpu().tolist()
 
-    eval_metrc = data_config[args.data_name]["eval_metric"]
-    res = eval_metrc(args, tokenizer, all_preds, all_labels, save_res=save_res)
+    if args.data_name in ["cb", "cb_uni"]:
+        eval_metric = acc_f1_metric
+    else:
+        eval_metric = acc_metric
+        
+    res = eval_metric(args, tokenizer, all_preds, all_labels, save_res=save_res)
 
     return total_loss, res
 
@@ -264,7 +266,7 @@ def acc_f1_metric(args, tokenizer: EncDecTokenizer, all_preds, all_labels, save_
     return [acc, f1_macro]
 
 
-def load_data(args, data_config, data_type, tokenizer, prompt_config=None, ratio=1, num=-1, drop_last=True, do_infer=False):
+def load_data(args, data_type, tokenizer, prompt_config=None, ratio=1, num=-1, drop_last=True, do_infer=False):
     data_path = os.path.join(args.data_path, data_type + args.data_ext)
 
     # Data parallel arguments.
@@ -281,7 +283,7 @@ def load_data(args, data_config, data_type, tokenizer, prompt_config=None, ratio
 
     num_workers = args.num_workers
 
-    dataset = data_config[args.data_name]["dataset"](
+    dataset = DATA_CONFIG[args.data_name]["dataset"](
         args,
         tokenizer,
         data_path,
@@ -289,7 +291,6 @@ def load_data(args, data_config, data_type, tokenizer, prompt_config=None, ratio
         ratio=ratio,
         num=num,
         prefix=args.data_prefix,
-        cache_path=data_config[args.data_name]["cache_path"],
         do_infer=do_infer,
         prompt_config=prompt_config)
 
@@ -358,86 +359,11 @@ def main():
                 prompt_config[t]["init_ids"].extend(tokenizer.convert_tokens_to_ids([prompt_config[t]["default_init_token"] for _ in range(pad_num)]))
                 prompt_config[t]["init_ids"] = torch.tensor(prompt_config[t]["init_ids"], dtype=torch.long).to(device)
 
-    data_config = {
-        "boolq": {
-            "dataset": BoolQDataset,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "boolq_uni": {
-            "dataset": BoolQDatasetUni,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "rte": {
-            "dataset": RTEDataset,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "rte_uni": {
-            "dataset": RTEDatasetUni,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "cb": {
-            "dataset": CBDataset,
-            "eval_func": evaluate,
-            "eval_metric": acc_f1_metric,
-            "cache_path": None,
-        },
-        "cb_uni": {
-            "dataset": CBDatasetUni,
-            "eval_func": evaluate,
-            "eval_metric": acc_f1_metric,
-            "cache_path": None,
-        },
-        "race": {
-            "dataset": RACEDataset,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "race_uni": {
-            "dataset": RACEDatasetUni,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "sst2": {
-            "dataset": SST2Dataset,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "sst2_uni": {
-            "dataset": SST2DatasetUni,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None
-        },
-        "sst5": {
-            "dataset": SST5Dataset,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-        "sst5_uni": {
-            "dataset": SST5DatasetUni,
-            "eval_func": evaluate,
-            "eval_metric": acc_metric,
-            "cache_path": None,
-        },
-    }
-
     if args.do_train:
-        train_dataloader, train_dataset, random_sampler = load_data(args, data_config, "train", tokenizer, prompt_config, ratio=args.train_ratio, num=args.train_num)
-        dev_dataloader, dev_dataset, _  = load_data(args, data_config, "valid", tokenizer, prompt_config, ratio=args.dev_ratio, num=args.dev_num)
+        train_dataloader, train_dataset, random_sampler = load_data(args, "train", tokenizer, prompt_config, ratio=args.train_ratio, num=args.train_num)
+        dev_dataloader, dev_dataset, _  = load_data(args, "valid", tokenizer, prompt_config, ratio=args.dev_ratio, num=args.dev_num)
         if args.do_eval_while_valid:
-            eval_dataloader, eval_dataset, _ = load_data(args, data_config, "test", tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
+            eval_dataloader, eval_dataset, _ = load_data(args, "test", tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
         if args.train_iters == -1:
             args.train_iters = len(train_dataset) * args.epochs // (mpu.get_data_parallel_world_size() * args.batch_size * args.gradient_accumulation_steps)
     else:
@@ -451,13 +377,12 @@ def main():
     model, optimizer, lr_scheduler = setup_model_and_optimizer(args, tokenizer.vocab_size, ds_config, prompt_config)
 
     if args.do_train:
-        train(args, data_config, tokenizer, model, optimizer, lr_scheduler, train_dataset, train_dataloader, dev_dataset, dev_dataloader, eval_dataset, eval_dataloader, device, random_sampler, prompt_config)
+        train(args, tokenizer, model, optimizer, lr_scheduler, train_dataset, train_dataloader, dev_dataset, dev_dataloader, eval_dataset, eval_dataloader, device, random_sampler, prompt_config)
 
     if args.do_eval:
-        eval_dataloader, eval_dataset, _ = load_data(args, data_config, "test", tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
-        eval_func = data_config[args.data_name]["eval_func"]
+        eval_dataloader, eval_dataset, _ = load_data(args, "test", tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
 
-        loss, acc = eval_func(args, tokenizer, data_config, eval_dataset, eval_dataloader, model, device, prompt_config, mode="test")
+        loss, acc = evaluate(args, tokenizer, eval_dataset, eval_dataloader, model, device, prompt_config, mode="test")
 
         log_string = "Eval result: loss: {:.6} | acc(mrr): {}".format(loss, acc)
         print_rank_0(log_string)
