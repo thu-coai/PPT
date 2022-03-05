@@ -199,6 +199,18 @@ def add_data_args(parser: argparse.ArgumentParser):
                        help="size of the model parallel.")
     group.add_argument("--data-path", type=str, default=None,
                        help="Path to combined dataset to split.")
+    
+    # pretrain data
+    group.add_argument('--data-impl', type=str, default='infer',
+                       choices=['lazy', 'cached', 'mmap', 'infer'],
+                       help='Implementation of indexed datasets.')
+    group.add_argument('--mmap-warmup', action='store_true',
+                       help='Warm up mmap files.')
+    group.add_argument('--split', default='1000,1,1',
+                       help='comma-separated list of proportions for training,'
+                       ' validation, and test split')
+
+    # downstream data
     group.add_argument("--data-ext", type=str, default=".json",
                        help="the extension of the data file")
     group.add_argument("--data-name", type=str, default=None,
