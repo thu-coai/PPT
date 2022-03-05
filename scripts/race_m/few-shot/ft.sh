@@ -62,7 +62,7 @@ OPTS+=" --do-eval-while-valid"
 OPTS+=" --seed ${SEED}"
 OPTS+=" --epochs ${EPOCHS}"
 
-CMD="torchrun --master_port ${MASTER_PORT} --nproc_per_node ${NUM_GPUS_PER_WORKER} ${WORKING_DIR}/train_mixup.py ${OPTS}"
+CMD="torchrun --master_port ${MASTER_PORT} --nproc_per_node ${NUM_GPUS_PER_WORKER} ${WORKING_DIR}/train.py ${OPTS}"
 
 echo ${CMD}
 mkdir -p ${SAVE_PATH}
