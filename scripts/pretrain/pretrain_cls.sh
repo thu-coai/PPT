@@ -6,7 +6,7 @@ MP_SIZE=4
 
 NUM_GPUS_PER_WORKER=4 # number of gpus used on one node
 
-DATA_PATH="${WORKING_DIR}/pretrain_data/cls"
+DATA_PATH="${WORKING_DIR}/pretrain_data/preprocessed/cls"
 
 CONFIG_PATH="${WORKING_DIR}/src/configs/model/enc_dec_xlarge_config.json"
 CKPT_PATH="/mnt/sfs_turbo/gyx/checkpoints/t5-xxl/t5-MP4/"
@@ -61,7 +61,8 @@ OPTS+=" --deepspeed"
 OPTS+=" --deepspeed_config ${DS_CONFIG}"
 OPTS+=" --prompt-tune"
 OPTS+=" --prompt-config ${PROMPT_CONFIG}"
-OPTS+=" --pretrain-task prompt_sentiment"
+OPTS+=" --pretrain-task cls"
+OPTS+=" --save-prompt-only"
 
 CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${WORKING_DIR}/src/pretrain_enc_dec.py ${OPTS}"
 

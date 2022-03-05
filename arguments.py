@@ -152,6 +152,14 @@ def add_training_args(parser: argparse.ArgumentParser):
     return parser
 
 
+def add_pretrain_args(parser: argparse.ArgumentParser):
+    group = parser.add_argument_group("pretrain", "pretrain configurations")
+    
+    group.add_argument("--pretrain-task", type=str, help="prompr pretraining tasl, one from [nsp, nss, cls]")
+
+    return parser
+
+
 def add_prompt_args(parser: argparse.ArgumentParser):
     group = parser.add_argument_group("prompt", "prompt configurations")
 
@@ -218,6 +226,7 @@ def get_args():
     parser = add_training_args(parser)
     parser = add_evaluation_args(parser)
     parser = add_data_args(parser)
+    parser = add_pretrain_args(parser)
     parser = add_prompt_args(parser)
 
     # Include DeepSpeed configuration arguments
