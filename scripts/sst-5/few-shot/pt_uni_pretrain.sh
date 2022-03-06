@@ -13,12 +13,10 @@ MASTER_PORT=${1-1234}
 LR=${2-0.01}
 GRAD_ACC=${3-1}
 SEED=${4-10}
-CKPT=${4-nss_10g_1_1_4_uni_lr0.1}
-CKPT_ITER=${5-16000}
 
 CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
 CKPT_PATH="${WORKING_DIR}/checkpoints/t5-xxl/t5-MP4"
-PROMPT_PATH="${WORKING_DIR}/pretrained_prompts/pretrain-${CKPT}-${CKPT_ITER}.pt"
+PROMPT_PATH="${WORKING_DIR}/pretrained_prompts/pretrain-nss-uni.pt"
 
 SAVE_PATH="${WORKING_DIR}/results/sst5/few-shot-32/uni_ppt/lr${LR}_G${GRAD_ACC}/seed${SEED}/"
 LOG_FILE="${SAVE_PATH}/log.txt"
