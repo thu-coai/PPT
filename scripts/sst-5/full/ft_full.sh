@@ -5,6 +5,7 @@ WORKING_DIR=/home/guyuxian/PPT-origin
 MP_SIZE=4
 
 NUM_GPUS_PER_WORKER=8 # number of gpus used on one node
+NUM_NODES=2
 
 DATA_EXT=".jsonl"
 DATA_PATH="${WORKING_DIR}/downstream_data/English/sst5-full/"
@@ -62,7 +63,7 @@ OPTS+=" --do-valid"
 OPTS+=" --seed ${SEED}"
 OPTS+=" --epochs ${EPOCHS}"
 
-CMD="torchrun --master_port ${MASTER_PORT} --nproc_per_node ${NUM_GPUS_PER_WORKER} ${WORKING_DIR}/train.py ${OPTS}"
+CMD="torchrun --master_port ${MASTER_PORT} --nproc_per_node ${NUM_GPUS_PER_WORKER} --nnodes ${NUM_NODES} ${WORKING_DIR}/train.py ${OPTS}"
 
 echo ${CMD}
 mkdir -p ${SAVE_PATH}

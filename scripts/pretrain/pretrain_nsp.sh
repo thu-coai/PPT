@@ -5,6 +5,7 @@ WORKING_DIR=/home/guyuxian/PPT-origin
 MP_SIZE=4
 
 NUM_GPUS_PER_WORKER=8 # number of gpus used on one node
+NUM_NODES=2
 
 DATA_PATH="${WORKING_DIR}/pretrain_data/preprocessed/nsp_document"
 

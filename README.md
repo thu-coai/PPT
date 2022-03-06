@@ -84,20 +84,20 @@ If the checkpoint is successfully loaded, the log printed to the stdout should c
 
 ### 4.1 Tuning
 
-We use the boolq dataset as an example. For t5-xxl model, PT and PPT can run on at least  4 * 32G V100 GPU. FT can run on at least 16 * 32G V100 GPU.
+We use the cb dataset as an example. For t5-xxl model, PT and PPT can run on at least  4 * 32G V100 GPU. FT can run on at least 16 * 32G V100 GPU.
 
 ```bash
 # few-shot 32 samples
-bash scripts/boolq/few-shot/ft.sh # Fine-tuning (FT)
-bash scripts/boolq/few-shot/pt.sh # Prompt Tuning (PT)
-bash scripts/boolq/few-shot/pt_pretrain.sh # Pre-trained Prompt Tuning (PPT)
-bash scripts/boolq/few-shot/pt_uni_pretrain.sh # Unified Pre-trained Prompt Tuning (Unified PPT)
+bash scripts/cb/few-shot/ft.sh # Fine-tuning (FT)
+bash scripts/cb/few-shot/pt.sh # Prompt Tuning (PT)
+bash scripts/cb/few-shot/pt_pretrain.sh # Pre-trained Prompt Tuning (PPT)
+bash scripts/cb/few-shot/pt_uni_pretrain.sh # Unified Pre-trained Prompt Tuning (Unified PPT)
 
 # full data
-bash scripts/boolq/full/ft.sh # Fine-tuning (FT)
-bash scripts/boolq/full/pt.sh # Prompt Tuning (PT)
-bash scripts/boolq/full/pt_pretrain.sh # Pre-trained Prompt Tuning (PPT)
-bash scripts/boolq/full/pt_uni_pretrain.sh # Unified Pre-trained Prompt Tuning (Unified PPT)
+bash scripts/cb/full/ft.sh # Fine-tuning (FT)
+bash scripts/cb/full/pt.sh # Prompt Tuning (PT)
+bash scripts/cb/full/pt_pretrain.sh # Pre-trained Prompt Tuning (PPT)
+bash scripts/cb/full/pt_uni_pretrain.sh # Unified Pre-trained Prompt Tuning (Unified PPT)
 ```
 
 ### 4.2 Pre-training
