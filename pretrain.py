@@ -64,9 +64,7 @@ def get_masks_and_position_ids(args,
                                tokenizer: EncDecTokenizer,
                                contexts,
                                targets,
-                               labels,
-                               reset_position_ids,
-                               reset_attention_mask):
+                               labels):
     # Extract batch size and sequence length.
     batch_size, enc_seq_length = contexts.size()
 
@@ -155,9 +153,7 @@ def get_batch(tokenizer, data_iterator, args, timers):
         tokenizer,
         contexts,
         targets,
-        labels,
-        args.reset_position_ids,
-        args.reset_attention_mask)
+        labels)
 
     batch = {
         "enc_input_ids": contexts,
@@ -317,14 +313,6 @@ def train(tokenizer, model, optimizer, lr_scheduler,
             prefix = 'iteration {}'.format(iteration)
             evaluate_and_print_results(
                 tokenizer, prefix, val_data_iterator, model, args, timers, False)
-
-        if args.exit_interval and iteration % args.exit_interval == 0:
-            torch.distributed.barrier()
-            time_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            rank = torch.distributed.get_rank()
-            print('rank: {} | time: {} | exiting the program at iteration {}'.
-                  format(rank, time_str, iteration), flush=True)
-            exit()
 
     return iteration, skipped_iters
 

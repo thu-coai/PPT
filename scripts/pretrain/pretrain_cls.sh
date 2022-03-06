@@ -9,13 +9,13 @@ NUM_NODES=2
 
 DATA_PATH="${WORKING_DIR}/pretrain_data/preprocessed/cls"
 
-CONFIG_PATH="${WORKING_DIR}/src/configs/model/t5_xxl_config.json"
+CONFIG_PATH="${WORKING_DIR}/configs/model/t5_xxl_config.json"
 CKPT_PATH="${WORKING_DIR}/checkpoints/t5-xxl/t5-MP4"
 
-DS_CONFIG="${WORKING_DIR}/src/configs/deepspeed/ds_fp16.json"
+DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
-PROMPT_CONFIG="${WORKING_DIR}/src/configs/prompt/pretrain.json"
+PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/pretrain.json"
 
 MASTER_PORT=${1-1234}
 BATCH_SIZE=64
