@@ -83,7 +83,7 @@ def add_training_args(parser: argparse.ArgumentParser):
                        help="the epochs for training")
     group.add_argument("--batch-size", type=int, default=4,
                        help="Data Loader batch size")
-    group.add_argument("--dev-batch-size", type=int, default=2,
+    group.add_argument("--dev-batch-size", type=int, default=None,
                        help="Data Loader batch size")
     group.add_argument("--gradient-accumulation-steps", type=int, default=1,
                        help="gradient accumulation steps")

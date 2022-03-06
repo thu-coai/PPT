@@ -10,7 +10,7 @@ DATA_EXT=".jsonl"
 DATA_PATH="${WORKING_DIR}/downstream_data/English/cb/"
 
 MASTER_PORT=${1-1234}
-LR=${2-0.005}
+LR=${2-0.05}
 GRAD_ACC=${3-1}
 SEED=${4-10}
 
@@ -25,6 +25,7 @@ TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 PROMPT_CONFIG="${WORKING_DIR}/configs/prompt/pt.json"
 
 BATCH_SIZE=8
+DEV_BATCH_SIZE=2
 EVAL_BATCH_SIZE=2
 TRAIN_ITER=-1
 EPOCHS=50
@@ -34,6 +35,7 @@ OPTS=""
 OPTS+=" --model-config ${CONFIG_PATH}"
 OPTS+=" --model-parallel-size ${MP_SIZE}"
 OPTS+=" --batch-size ${BATCH_SIZE}"
+OPTS+=" --dev-batch-size ${DEV_BATCH_SIZE}"
 OPTS+=" --eval-batch-size ${EVAL_BATCH_SIZE}"
 OPTS+=" --gradient-accumulation-steps ${GRAD_ACC}"
 OPTS+=" --train-iters ${TRAIN_ITER}"

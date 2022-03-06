@@ -272,11 +272,13 @@ def load_data(args, data_type, tokenizer, prompt_config=None, ratio=1, num=-1, d
     # Data parallel arguments.
     world_size = mpu.get_data_parallel_world_size()
     rank = mpu.get_data_parallel_rank()
+    if args.dev_batch_size is None:
+        args.dev_batch_size = args.batch_size
     if args.eval_batch_size is None:
         args.eval_batch_size = args.batch_size
     if data_type == "train":
         global_batch_size = args.batch_size * world_size
-    elif data_type == "dev32":
+    elif data_type == "valid":
         global_batch_size = args.dev_batch_size * world_size
     else:
         global_batch_size = args.eval_batch_size * world_size

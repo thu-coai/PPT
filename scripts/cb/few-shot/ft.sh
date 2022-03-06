@@ -23,6 +23,7 @@ DS_CONFIG="${WORKING_DIR}/configs/deepspeed/ds_fp16.json"
 TOKENIZER_PATH="${WORKING_DIR}/vocab_en"
 
 BATCH_SIZE=4
+DEV_BATCH_SIZE=2
 EVAL_BATCH_SIZE=2
 TRAIN_ITER=-1
 EPOCHS=50
@@ -32,6 +33,7 @@ OPTS=""
 OPTS+=" --model-config ${CONFIG_PATH}"
 OPTS+=" --model-parallel-size ${MP_SIZE}"
 OPTS+=" --batch-size ${BATCH_SIZE}"
+OPTS+=" --dev-batch-size ${DEV_BATCH_SIZE}"
 OPTS+=" --eval-batch-size ${EVAL_BATCH_SIZE}"
 OPTS+=" --gradient-accumulation-steps ${GRAD_ACC}"
 OPTS+=" --train-iters ${TRAIN_ITER}"

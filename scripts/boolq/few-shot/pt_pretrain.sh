@@ -10,7 +10,7 @@ DATA_EXT=".jsonl"
 DATA_PATH="${WORKING_DIR}/downstream_data/English/boolq/"
 
 MASTER_PORT=${1-1234}
-LR=${2-0.005}
+LR=${2-0.05}
 GRAD_ACC=${3-1}
 SEED=${4-10}
 CKPT=${4-nsp_10g_3c_en_lr0.1}
