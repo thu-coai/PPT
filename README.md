@@ -37,7 +37,7 @@ Since there exist some **bugs** in DeepSpeed, you need to make some little modif
 
 The original datasets is obtained from [huggingface](https://huggingface.co/datasets).
 
-The preprocessed datasets can be obtained from this link. If you do tuning (FT, PT, or PPT), you need to put the preprocessed data in `downstream_data/`.
+The preprocessed datasets can be obtained from this [link](https://drive.google.com/drive/folders/1Q6lMm48LcGZILQGI-0RaRJpLLQ_WX0gm?usp=sharing). If you do tuning (FT, PT, or PPT), you need to put the preprocessed data in `downstream_data/`.
 
 ### 2.2 Pre-training Data
 
@@ -50,7 +50,7 @@ bash scripts/tools/preprocess_pretrain_cls.sh # Single Sentence Classification
 bash scripts/tools/preprocess_pretrain_nss_uni.sh # Unified Next Sentence Selection (for Unified PPT)
 ```
 
-For reproductivity, we also provided the preprocessed pre-training data in this link. You can directly move the preprocessed pre-training data to `pretrain_data/preprocessed/`.
+For reproductivity, we also provided the preprocessed pre-training data in this [link](https://drive.google.com/drive/folders/1Q6lMm48LcGZILQGI-0RaRJpLLQ_WX0gm?usp=sharing). You can directly move the preprocessed pre-training data to `pretrain_data/preprocessed/`.
 
 
 
@@ -70,7 +70,7 @@ python3 tools/transform.py \
 
 ### 3.2 Prompts
 
-The pretrained prompts can be obtained from this link. You need to move the pre-tained prompts to `pretrained_prompts/`.
+The pretrained prompts can be obtained from this [link](https://drive.google.com/drive/folders/1Q6lMm48LcGZILQGI-0RaRJpLLQ_WX0gm?usp=sharing). You need to move the pre-tained prompts to `pretrained_prompts/`.
 
 
 
