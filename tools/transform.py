@@ -241,3 +241,6 @@ def main():
     new_model = transform_new_model(model_hf)
 
     change_mp(new_model, args.save_path, args.mp_size)
+    
+if __name__ == '__main__':
+    main()
