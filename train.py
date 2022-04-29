@@ -156,6 +156,8 @@ def train(args, tokenizer, model, optimizer, lr_scheduler,
 
                 if args.max_save > 0:
                     i = 0
+                    if isinstance(dev_acc, list): # adapt for cb, whose return value is a list: [acc, f1]
+                        dev_acc = dev_acc[0]
                     while i < len(best_accs):
                         if best_accs[i][1] < dev_acc:
                             break
@@ -366,6 +368,8 @@ def main():
         dev_dataloader, dev_dataset, _  = load_data(args, "valid", tokenizer, prompt_config, ratio=args.dev_ratio, num=args.dev_num)
         if args.do_eval_while_valid:
             eval_dataloader, eval_dataset, _ = load_data(args, "test", tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
+        else:
+            eval_dataloader, eval_dataset = None, None
         if args.train_iters == -1:
             args.train_iters = len(train_dataset) * args.epochs // (mpu.get_data_parallel_world_size() * args.batch_size * args.gradient_accumulation_steps)
     else:
