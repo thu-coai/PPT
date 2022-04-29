@@ -366,6 +366,8 @@ def main():
         dev_dataloader, dev_dataset, _  = load_data(args, "valid", tokenizer, prompt_config, ratio=args.dev_ratio, num=args.dev_num)
         if args.do_eval_while_valid:
             eval_dataloader, eval_dataset, _ = load_data(args, "test", tokenizer, prompt_config, ratio=args.test_ratio, num=args.test_num)
+        else:
+            eval_dataloader, eval_dataset = None, None
         if args.train_iters == -1:
             args.train_iters = len(train_dataset) * args.epochs // (mpu.get_data_parallel_world_size() * args.batch_size * args.gradient_accumulation_steps)
     else:
