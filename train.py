@@ -156,6 +156,8 @@ def train(args, tokenizer, model, optimizer, lr_scheduler,
 
                 if args.max_save > 0:
                     i = 0
+                    if isinstance(dev_acc, list): # adapt for cb, whose return value is a list: [acc, f1]
+                        dev_acc = dev_acc[0]
                     while i < len(best_accs):
                         if best_accs[i][1] < dev_acc:
                             break
