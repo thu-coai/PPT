@@ -152,7 +152,7 @@ def transform_new_model(model_hf):
     return {'module': model_new}
 
 
-def change_mp(d, output_dir, mp_size):
+def change_mp(d, output_dir, mp_size, half=False):
 
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(os.path.join(output_dir, "1"), exist_ok=True)
@@ -223,6 +223,9 @@ def change_mp(d, output_dir, mp_size):
             else:
                 d_new['module'][k] = v
 
+            if half:
+                d_new['module'][k] = d_new['module'][k].half()
+
         filename = os.path.join(output_dir, "1", "mp_rank_0{}_model_states.pt".format(j))
         torch.save(d_new, filename)
 
@@ -233,6 +236,7 @@ def main():
     parser.add_argument("--hf_path", type=str)
     parser.add_argument("--mp_size", type=int, default=4)
     parser.add_argument("--save_path", type=str)
+    parser.add_argument("--half", action="store_true")
 
     args = parser.parse_args()
 
@@ -240,7 +244,7 @@ def main():
 
     new_model = transform_new_model(model_hf)
 
-    change_mp(new_model, args.save_path, args.mp_size)
+    change_mp(new_model, args.save_path, args.mp_size, half=args.half)
     
 if __name__ == '__main__':
     main()
