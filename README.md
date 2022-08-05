@@ -68,6 +68,8 @@ python3 tools/transform.py \
 --save_path "./checkpoints/t5-xxl/t5-MP4"
 ```
 
+**Note that our base model is [T5.1.1](https://huggingface.co/google/t5-v1_1-xxl)**
+
 ### 3.2 Prompts
 
 The pretrained prompts can be obtained from this [link](https://drive.google.com/drive/folders/1Q6lMm48LcGZILQGI-0RaRJpLLQ_WX0gm?usp=sharing). You need to move the pre-tained prompts to `pretrained_prompts/`.
