@@ -82,7 +82,7 @@ All scripts are in the directory `scripts`.
 
 Before running the code, please first change the `WORKING_DIR` to the current directory of this repo. If you are runing multiple scripts on a single node, you need to make sure that the `MASTER_PORT` of each script is different. 
 
-If the checkpoint is successfully loaded, the log printed to the stdout should contain messages like `successfully loaded /path-to-checkpoint/t5-MP4/mp_rank_01_model_states.pt`. Otherwise, `WARNING: could not find the metadata file /***/latest_checkpointed_iteration.txt will not load any checkpoints and will start from random` will display. Note that when you successfully load the model, you will see messages like `The following zero checkpoints paths are missing: ['/path-to-checkpoint/eva/200000/zero_pp_rank_0_mp_rank_00_optim_states.pt',...` which mean optimizer states are not loaded. This **DOES NOT** affect the use of model inference and you can just ignore it.
+If the checkpoint is successfully loaded, the log printed to the stdout should contain messages like `successfully loaded /path-to-checkpoint/t5-MP4/mp_rank_01_model_states.pt`. Otherwise, `WARNING: could not find the metadata file /***/latest_checkpointed_iteration.txt will not load any checkpoints and will start from random` will display. Note that when you successfully load the model, you will see messages like `The following zero checkpoints paths are missing: ['/path-to-checkpoint/200000/zero_pp_rank_0_mp_rank_00_optim_states.pt',...` which mean optimizer states are not loaded. This **DOES NOT** affect the use of model inference and you can just ignore it.
 
 ### 4.1 Tuning
 
