@@ -66,9 +66,22 @@ mkdir -p checkpoints/t5-xxl/t5-MP4
 python3 tools/transform.py \
 --hf_path ${PATH_TO_PYTORCH_MODLE_BIN}
 --save_path "./checkpoints/t5-xxl/t5-MP4"
+--half
 ```
 
 **Note that our base model is [T5.1.1](https://huggingface.co/google/t5-v1_1-xxl)**
+
+The transfered checkpoint should look like this:
+
+```bash
+t5-MP4/
+├── 1
+│   ├── mp_rank_00_model_states.pt
+│   ├── mp_rank_01_model_states.pt
+│   ├── mp_rank_02_model_states.pt
+│   └── mp_rank_03_model_states.pt
+└── latest_checkpointed_iteration.txt
+```
 
 ### 3.2 Prompts
 
